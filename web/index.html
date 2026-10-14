@@ -29,7 +29,7 @@
         .wrap{max-width:1040px;margin:22px auto 60px;padding:0 16px}
         .center{min-height:calc(100vh - 58px);display:flex;align-items:center;justify-content:center;padding:16px}
         .center .card{width:400px}
-        h1{font-size:19px;color:var(--blue);margin:0 0 6px}
+        h1{font-size:19px;color:var(--blue);margin:0 0 6px;text-align:center}
         h3{font-size:16px;margin:0 0 4px}
         .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
 
@@ -100,11 +100,9 @@
         .chip.green{background:#e9f7ef;color:var(--green)}
         .empty{color:var(--muted);text-align:center;padding:40px 0}
 
-        /* ---------- 我的借阅（图书页里那一块） ---------- */
-        .mine{margin:0 0 30px;padding-bottom:22px;border-bottom:2px dashed var(--line)}
-        .mine h3{display:flex;align-items:center;gap:8px}
-        .mine h3 .count{font-weight:400}
-        .mine .empty{padding:22px 0}
+        /* ---------- 我的借阅（独立标签页） ---------- */
+        #tab-mine .toolbar h3{margin:0}
+        #tab-mine .empty{padding:22px 0}
 
         /* ---------- 弹窗 ---------- */
         dialog{border:0;border-radius:14px;padding:26px 30px;width:400px;max-width:92vw;
@@ -131,7 +129,7 @@
         <!-- 登录 -->
         <div id="loginPane">
             <h1>登录</h1>
-            <p class="sub">用你的账号密码换一张「票」</p>
+
             <form id="loginForm">
                 <label for="username">用户名</label>
                 <input id="username" value="admin" autocomplete="username">
@@ -145,7 +143,7 @@
         <!-- 注册 -->
         <div id="registerPane" class="hide">
             <h1>注册</h1>
-            <p class="sub">注册出来的一律是读者，管理员可以之后给你升</p>
+            <p class="sub">注册默认为读者，如有问题可联系管理员</p>
             <form id="registerForm">
                 <label for="rUsername">用户名（只能用英文字母和数字）</label>
                 <input id="rUsername" autocomplete="username">
@@ -165,29 +163,34 @@
 <main id="appView" class="wrap hide">
 
     <nav class="tabs">
-        <button class="tab active" data-tab="books">图书</button>
+        <button class="tab active" data-tab="mine">我的借阅</button>
+        <button class="tab" data-tab="books">图书</button>
         <button class="tab" data-tab="borrows">借阅记录</button>
         <button class="tab hide" data-tab="users" id="tabUsers">用户管理</button>
     </nav>
 
-    <!-- ---------- 图书 ---------- -->
-    <section id="tab-books" class="card">
-        <!-- ---------- 我的借阅（放在图书列表上面） ---------- -->
-        <div class="mine">
+    <!-- ---------- 我的借阅（独立标签页） ---------- -->
+    <section id="tab-mine" class="card">
+        <div class="toolbar">
             <h3>我的借阅 <span class="count" id="myBorrowCount"></span></h3>
-            <p class="sub">这里只列【还没还】的书，按该还的先后排。可以直接在这里归还。</p>
-            <table id="myBorrowTable" class="hide">
-                <thead>
-                <tr>
-                    <th>编号</th><th>书名</th><th>借出时间</th><th>应还时间</th>
-                    <th>剩多久</th><th style="text-align:right">操作</th>
-                </tr>
-                </thead>
-                <tbody id="myBorrowRows"></tbody>
-            </table>
-            <p class="empty hide" id="myBorrowEmpty">你现在没有借书</p>
+            <div style="flex:1"></div>
+            <button class="btn-ghost btn-mini" id="myBorrowReload">刷新</button>
         </div>
+        <p class="sub">这里只列【还没还】的书，按该还的先后排。可以直接在这里归还。</p>
+        <table id="myBorrowTable" class="hide">
+            <thead>
+            <tr>
+                <th>编号</th><th>书名</th><th>借出时间</th><th>应还时间</th>
+                <th>剩多久</th><th style="text-align:right">操作</th>
+            </tr>
+            </thead>
+            <tbody id="myBorrowRows"></tbody>
+        </table>
+        <p class="empty hide" id="myBorrowEmpty">你现在没有借书</p>
+    </section>
 
+    <!-- ---------- 图书 ---------- -->
+    <section id="tab-books" class="card hide">
         <!-- ---------- 图书列表 ---------- -->
         <div class="toolbar">
             <div class="grow"><input id="search" placeholder="搜书名 / 作者 / 编号…"></div>
@@ -495,7 +498,7 @@
         $("#tabUsers").classList.toggle("hide", !isAdmin);
         $("#bookAdd").classList.toggle("hide", !isAdmin);
 
-        switchTab("books");
+        switchTab("mine");
     }
 
     /* =========================================================
@@ -509,10 +512,12 @@
         document.querySelectorAll(".tab").forEach((t) =>
             t.classList.toggle("active", t.dataset.tab === name));
 
+        $("#tab-mine").classList.toggle("hide", name !== "mine");
         $("#tab-books").classList.toggle("hide", name !== "books");
         $("#tab-borrows").classList.toggle("hide", name !== "borrows");
         $("#tab-users").classList.toggle("hide", name !== "users");
 
+        if (name === "mine") loadMyBorrows();
         if (name === "books") refreshBooksAndMine();
         if (name === "borrows") loadBorrows();
         if (name === "users") loadUsers();
@@ -590,6 +595,8 @@
     $("#bookAdd").addEventListener("click", () => openBookDialog(null));
 
     /* ---------- 我的借阅 ---------- */
+    $("#myBorrowReload").addEventListener("click", loadMyBorrows);
+
     async function loadMyBorrows() {
         const list = await api("GET", "/api/borrows/mine");
         if (!list) return;
