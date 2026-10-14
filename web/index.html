@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>图书管理系统</title>
+    <style>
+        :root{
+            --blue:#3b6ef6; --blue-d:#2f5be0; --ink:#2b3245; --muted:#7b8398;
+            --line:#eef1f6; --bg:#f4f6fb; --red:#d64545; --green:#2a9d5c; --amber:#c98a12;
+        }
+        *{box-sizing:border-box}
+        body{margin:0;background:var(--bg);color:var(--ink);
+            font-family:"Microsoft YaHei",system-ui,-apple-system,sans-serif;font-size:14px}
+        button{font-family:inherit}
+        .hide{display:none !important}
+
+        /* ---------- 顶栏 ---------- */
+        .topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;
+            display:flex;align-items:center;justify-content:space-between;
+            position:sticky;top:0;z-index:10}
+        .brand{font-size:17px;font-weight:700;color:var(--blue)}
+        .who{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+        .badge{background:#eef3ff;color:var(--blue);border-radius:999px;padding:2px 10px;font-size:12px}
+        .badge.reader{background:#f1f3f7;color:#7b8398}
+
+        /* ---------- 卡片 / 布局 ---------- */
+        .card{background:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.06);padding:26px 30px}
+        .wrap{max-width:1040px;margin:22px auto 60px;padding:0 16px}
+        .center{min-height:calc(100vh - 58px);display:flex;align-items:center;justify-content:center;padding:16px}
+        .center .card{width:400px}
+        h1{font-size:19px;color:var(--blue);margin:0 0 6px}
+        h3{font-size:16px;margin:0 0 4px}
+        .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+
+        /* ---------- 表单 ---------- */
+        label{display:block;font-size:13px;color:var(--muted);margin:14px 0 5px}
+        input,select{width:100%;padding:9px 11px;font-size:14px;font-family:inherit;color:var(--ink);
+            border:1px solid #d5d9e2;border-radius:8px;outline:none;background:#fff}
+        input:focus,select:focus{border-color:var(--blue)}
+        input:disabled{background:#f6f7fa;color:#9aa2b4}
+        button{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 18px;
+            font-size:14px;cursor:pointer;transition:background .15s}
+        button:hover:enabled{background:var(--blue-d)}
+        button:disabled{background:#c8cfdb;cursor:not-allowed}
+        .btn-ghost{background:#eef1f6;color:#5a6379}
+        .btn-ghost:hover:enabled{background:#e2e7f0}
+        .btn-danger{background:var(--red)}
+        .btn-danger:hover:enabled{background:#bd3838}
+        .btn-mini{padding:5px 11px;font-size:13px;border-radius:7px}
+        .btn-full{width:100%;margin-top:20px;padding:11px;font-size:15px}
+        .linkline{text-align:center;color:var(--muted);font-size:13px;margin:16px 0 0}
+        .link{color:var(--blue);cursor:pointer;text-decoration:underline}
+
+        /* ---------- 借几天：快捷按钮 ---------- */
+        .quickdays{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+        .quickdays button{flex:1;padding:7px 0;font-size:13px}
+        .duehint{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:#f4f7ff;
+            color:var(--blue);font-size:13px}
+
+        /* ---------- 灰条提示 ---------- */
+        .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99;
+            padding:10px 22px;border-radius:999px;font-size:14px;color:#fff;background:#5a6379;
+            box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:80vw;text-align:center}
+        .toast.ok{background:var(--green)}
+        .toast.bad{background:var(--red)}
+        .toast.info{background:#48536b}
+
+        /* ---------- 标签页 ---------- */
+        .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+        .tab{background:#fff;color:#5a6379;border:1px solid var(--line);padding:8px 20px;
+            border-radius:999px;font-size:14px}
+        .tab:hover:enabled{background:#f7f9fd}
+        .tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+        .tab.active:hover:enabled{background:var(--blue)}
+
+        /* ---------- 工具行 ---------- */
+        .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+        .toolbar .grow{flex:1;min-width:160px}
+        .toolbar .grow input{margin:0}
+        .count{color:var(--muted);font-size:13px;white-space:nowrap}
+
+        /* ---------- 表格 ---------- */
+        table{width:100%;border-collapse:collapse;font-size:14px}
+        th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+        th{color:var(--muted);font-weight:400;font-size:13px;white-space:nowrap}
+        tbody tr:hover{background:#fafbfe}
+        td.op{white-space:nowrap;text-align:right}
+        td.op button+button{margin-left:6px}
+        td.op button.ghost{background:#eef1f6;color:#5a6379}
+        td.op button.ghost:hover:enabled{background:#e2e7f0}
+        td.op button.danger{background:#fdeeee;color:var(--red)}
+        td.op button.danger:hover:enabled{background:#f9dede}
+        .num{color:var(--muted)}
+        .num.zero{color:var(--red);font-weight:700}
+        .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;
+            background:#eef3ff;color:var(--blue)}
+        .chip.gray{background:#f1f3f7;color:#7b8398}
+        .chip.red{background:#fdeeee;color:var(--red)}
+        .chip.green{background:#e9f7ef;color:var(--green)}
+        .empty{color:var(--muted);text-align:center;padding:40px 0}
+
+        /* ---------- 我的借阅（图书页里那一块） ---------- */
+        .mine{margin:0 0 30px;padding-bottom:22px;border-bottom:2px dashed var(--line)}
+        .mine h3{display:flex;align-items:center;gap:8px}
+        .mine h3 .count{font-weight:400}
+        .mine .empty{padding:22px 0}
+
+        /* ---------- 弹窗 ---------- */
+        dialog{border:0;border-radius:14px;padding:26px 30px;width:400px;max-width:92vw;
+            box-shadow:0 20px 60px rgba(0,0,0,.22);color:var(--ink)}
+        dialog::backdrop{background:rgba(30,38,58,.45)}
+        dialog menu{display:flex;justify-content:flex-end;gap:10px;margin:24px 0 0;padding:0}
+    </style>
+</head>
+<body>
+
+<!-- ==================== 顶栏 ==================== -->
+<header class="topbar">
+    <div class="brand">📚 图书管理系统</div>
+    <div class="who" id="who"></div>
+</header>
+
+<!-- ==================== 提示条 ==================== -->
+<div id="toast" class="toast hide"></div>
+
+<!-- ==================== 登录 / 注册 ==================== -->
+<main id="loginView" class="center">
+    <div class="card">
+
+        <!-- 登录 -->
+        <div id="loginPane">
+            <h1>登录</h1>
+            <p class="sub">用你的账号密码换一张「票」</p>
+            <form id="loginForm">
+                <label for="username">用户名</label>
+                <input id="username" value="admin" autocomplete="username">
+                <label for="password">密码</label>
+                <input id="password" type="password" autocomplete="current-password">
+                <button type="submit" class="btn-full">登录</button>
+            </form>
+            <p class="linkline">还没有账号？<span class="link" id="toRegister">去注册</span></p>
+        </div>
+
+        <!-- 注册 -->
+        <div id="registerPane" class="hide">
+            <h1>注册</h1>
+            <p class="sub">注册出来的一律是读者，管理员可以之后给你升</p>
+            <form id="registerForm">
+                <label for="rUsername">用户名（只能用英文字母和数字）</label>
+                <input id="rUsername" autocomplete="username">
+                <label for="rName">姓名（汉字或英文字母）</label>
+                <input id="rName">
+                <label for="rPassword">密码（至少 6 位）</label>
+                <input id="rPassword" type="password" autocomplete="new-password">
+                <button type="submit" class="btn-full">注册</button>
+            </form>
+            <p class="linkline">已经有账号了？<span class="link" id="toLogin">去登录</span></p>
+        </div>
+
+    </div>
+</main>
+
+<!-- ==================== 主界面 ==================== -->
+<main id="appView" class="wrap hide">
+
+    <nav class="tabs">
+        <button class="tab active" data-tab="books">图书</button>
+        <button class="tab" data-tab="borrows">借阅记录</button>
+        <button class="tab hide" data-tab="users" id="tabUsers">用户管理</button>
+    </nav>
+
+    <!-- ---------- 图书 ---------- -->
+    <section id="tab-books" class="card">
+        <!-- ---------- 我的借阅（放在图书列表上面） ---------- -->
+        <div class="mine">
+            <h3>我的借阅 <span class="count" id="myBorrowCount"></span></h3>
+            <p class="sub">这里只列【还没还】的书，按该还的先后排。可以直接在这里归还。</p>
+            <table id="myBorrowTable" class="hide">
+                <thead>
+                <tr>
+                    <th>编号</th><th>书名</th><th>借出时间</th><th>应还时间</th>
+                    <th>剩多久</th><th style="text-align:right">操作</th>
+                </tr>
+                </thead>
+                <tbody id="myBorrowRows"></tbody>
+            </table>
+            <p class="empty hide" id="myBorrowEmpty">你现在没有借书</p>
+        </div>
+
+        <!-- ---------- 图书列表 ---------- -->
+        <div class="toolbar">
+            <div class="grow"><input id="search" placeholder="搜书名 / 作者 / 编号…"></div>
+            <span class="count" id="bookCount"></span>
+            <button class="btn-ghost btn-mini" id="bookReload">刷新</button>
+            <button class="btn-mini hide" id="bookAdd">＋ 新增图书</button>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <th>编号</th><th>书名</th><th>作者</th>
+                <th>总数</th><th>可借</th><th style="text-align:right">操作</th>
+            </tr>
+            </thead>
+            <tbody id="bookRows"></tbody>
+        </table>
+        <p class="empty hide" id="bookEmpty">没有符合条件的书</p>
+    </section>
+
+    <!-- ---------- 借阅记录 ---------- -->
+    <section id="tab-borrows" class="card hide">
+        <div class="toolbar">
+            <span class="count" id="borrowCount"></span>
+            <span class="count" id="borrowScope"></span>
+            <div style="flex:1"></div>
+            <button class="btn-ghost btn-mini" id="borrowReload">刷新</button>
+        </div>
+        <table>
+            <thead>
+            <tr id="borrowHead"></tr>
+            </thead>
+            <tbody id="borrowRows"></tbody>
+        </table>
+        <p class="empty hide" id="borrowEmpty">还没有任何借阅记录</p>
+    </section>
+
+    <!-- ---------- 用户管理 ---------- -->
+    <section id="tab-users" class="card hide">
+        <div class="toolbar">
+            <span class="count" id="userCount"></span>
+            <div style="flex:1"></div>
+            <button class="btn-ghost btn-mini" id="userReload">刷新</button>
+        </div>
+        <table>
+            <thead>
+            <tr>
+                <th>用户名</th><th>姓名</th><th>角色</th>
+                <th style="text-align:right">操作</th>
+            </tr>
+            </thead>
+            <tbody id="userRows"></tbody>
+        </table>
+    </section>
+
+</main>
+
+<!-- ==================== 弹窗：借书（选借多少天） ==================== -->
+<dialog id="borrowDialog">
+    <form id="borrowForm">
+        <h3>借书</h3>
+        <p class="sub" id="borrowWho"></p>
+        <label for="fDays">借多少天</label>
+        <input id="fDays" type="number" min="1" max="365" step="1" value="30">
+        <div class="quickdays">
+            <button type="button" class="btn-ghost btn-mini" data-days="7">7 天</button>
+            <button type="button" class="btn-ghost btn-mini" data-days="15">15 天</button>
+            <button type="button" class="btn-ghost btn-mini" data-days="30">30 天</button>
+            <button type="button" class="btn-ghost btn-mini" data-days="60">60 天</button>
+            <button type="button" class="btn-ghost btn-mini" data-days="90">90 天</button>
+        </div>
+        <p class="duehint" id="borrowDue"></p>
+        <menu>
+            <button type="button" class="btn-ghost" id="borrowCancel">取消</button>
+            <button type="submit">确定借出</button>
+        </menu>
+    </form>
+</dialog>
+
+<!-- ==================== 弹窗：图书 ==================== -->
+<dialog id="bookDialog">
+    <form id="bookForm">
+        <h3 id="bookDialogTitle">新增图书</h3>
+        <p class="sub" id="bookDialogHint"></p>
+        <label for="fBookId">编号（如 B052）</label>
+        <input id="fBookId">
+        <label for="fBookName">书名</label>
+        <input id="fBookName">
+        <label for="fAuthor">作者</label>
+        <input id="fAuthor">
+        <div id="totalRow">
+            <label for="fTotal">册数</label>
+            <input id="fTotal" type="number" min="1" step="1" value="1">
+        </div>
+        <menu>
+            <button type="button" class="btn-ghost" id="bookCancel">取消</button>
+            <button type="submit">保存</button>
+        </menu>
+    </form>
+</dialog>
+
+<!-- ==================== 弹窗：重置密码 ==================== -->
+<dialog id="pwdDialog">
+    <form id="pwdForm">
+        <h3>重置密码</h3>
+        <p class="sub" id="pwdWho"></p>
+        <label for="fPassword">新密码（至少 6 位）</label>
+        <input id="fPassword" type="text">
+        <menu>
+            <button type="button" class="btn-ghost" id="pwdCancel">取消</button>
+            <button type="submit">确定</button>
+        </menu>
+    </form>
+</dialog>
+
+<script>
+    /* =========================================================
+       全局状态
+       ========================================================= */
+    let token = sessionStorage.getItem("token");   // 票：刷新页面还在，关掉标签页就没
+    let me    = null;                              // 当前登录的人 {username,name,role}
+    let books = [];                                // 本地缓存的书单（搜索是在这上面筛的）
+    let myOpenIds = new Set();                     // 我手上还没还的书编号（用来按掉"还书"按钮）
+    let editingBookId = null;                      // 弹窗现在是"新增"还是"改哪本"
+    let pwdUsername   = null;                      // 弹窗要给谁重置密码
+    let borrowBookId  = null;                      // 借书弹窗正在借哪本
+
+    /* 跟后端 BorrowRecord.java 里的常量对齐 */
+    const DEFAULT_DAYS = 30;                       // 没填天数就借 30 天
+    const MAX_DAYS     = 365;                      // 后端也卡了这个上限
+    const DAY_MS       = 24 * 60 * 60 * 1000;
+
+    /* =========================================================
+       小工具
+       ========================================================= */
+    const $ = (sel) => document.querySelector(sel);
+
+    /** 造一个元素。★ 一律走 textContent —— 服务器给的数据绝不进 innerHTML */
+    function el(tag, text, cls) {
+        const node = document.createElement(tag);
+        if (text !== undefined && text !== null) node.textContent = text;
+        if (cls) node.className = cls;
+        return node;
+    }
+
+    /** 造一个小按钮 */
+    function miniBtn(label, cls, onClick) {
+        const b = el("button", label, "btn-mini" + (cls ? " " + cls : ""));
+        b.type = "button";
+        b.addEventListener("click", onClick);
+        return b;
+    }
+
+    /** 顶部那条提示。kind: ok / bad / info */
+    function toast(text, kind) {
+        const t = $("#toast");
+        t.textContent = text;
+        t.className = "toast " + (kind || "info");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => t.classList.add("hide"), 4000);
+    }
+
+    /** 毫秒 -> 2026-03-14 09:05；0 表示"还没有" */
+    function fmtTime(ms) {
+        if (!ms) return "—";
+        const d = new Date(ms);
+        const p = (n) => String(n).padStart(2, "0");
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate())
+            + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    }
+
+    /** 这条记录借了几天（老数据里 days 是 0，按默认算） */
+    function daysOf(r) {
+        return r.days > 0 ? r.days : DEFAULT_DAYS;
+    }
+
+    /** 这条记录应该哪天还 = 借出时间 + 借期天数 */
+    function dueOf(r) {
+        return r.borrowTime + daysOf(r) * DAY_MS;
+    }
+
+    /* =========================================================
+       唯一的请求出口
+       成功 -> 返回数据；失败 -> 已经弹过提示，返回 null
+       ========================================================= */
+    async function api(method, url, body) {
+        const opt = { method: method, headers: {} };
+        if (token) opt.headers["Authorization"] = "Bearer " + token;
+        if (body !== undefined) {
+            opt.headers["Content-Type"] = "application/json";
+            opt.body = JSON.stringify(body);
+        }
+
+        let resp;
+        try {
+            resp = await fetch(url, opt);
+        } catch (e) {
+            toast("连不上服务器（服务器还开着吗？）", "bad");
+            return null;
+        }
+
+        // 401 = 票过期了 / 服务器重启过了 —— 直接踢回登录页
+        if (resp.status === 401) {
+            backToLogin();
+            toast("登录已过期，请重新登录", "bad");
+            return null;
+        }
+
+        // 先把正文读成文本，再自己解析：这样 500 之类的非 JSON 也不会炸
+        const text = await resp.text();
+        let data = null;
+        if (text) { try { data = JSON.parse(text); } catch (e) { data = null; } }
+
+        if (!resp.ok) {
+            toast((data && data.message) || ("HTTP " + resp.status), "bad");
+            return null;
+        }
+        return data;
+    }
+
+    /* =========================================================
+       登录 / 注册 / 退出
+       ========================================================= */
+    $("#toRegister").addEventListener("click", () => {
+        $("#loginPane").classList.add("hide");
+        $("#registerPane").classList.remove("hide");
+    });
+    $("#toLogin").addEventListener("click", () => {
+        $("#registerPane").classList.add("hide");
+        $("#loginPane").classList.remove("hide");
+    });
+
+    $("#loginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();                       // ★ 不写这句，浏览器会刷新整个页面
+        const r = await api("POST", "/api/login", {
+            username: $("#username").value.trim(),
+            password: $("#password").value
+        });
+        if (!r) return;
+
+        token = r.token;
+        sessionStorage.setItem("token", token);
+        $("#password").value = "";
+        await enterApp();
+    });
+
+    $("#registerForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const username = $("#rUsername").value.trim();
+        const r = await api("POST", "/api/register", {
+            username: username,
+            password: $("#rPassword").value,
+            name: $("#rName").value.trim()
+        });
+        if (!r) return;
+
+        toast(r.message, "ok");
+        $("#registerForm").reset();
+        $("#toLogin").click();                        // 切回登录页
+        $("#username").value = username;              // 顺手把用户名填好
+        $("#password").focus();
+    });
+
+    function backToLogin() {
+        token = null;
+        me = null;
+        myOpenIds = new Set();
+        sessionStorage.removeItem("token");
+        $("#appView").classList.add("hide");
+        $("#loginView").classList.remove("hide");
+        $("#bookRows").replaceChildren();
+        $("#myBorrowRows").replaceChildren();
+        $("#borrowRows").replaceChildren();
+        $("#userRows").replaceChildren();
+    }
+
+    async function doLogout() {
+        await api("POST", "/api/logout");             // 让服务器把票作废
+        backToLogin();
+        toast("已退出登录", "info");
+    }
+
+    /* =========================================================
+       进主界面
+       ========================================================= */
+    async function enterApp() {
+        const who = await api("GET", "/api/me");
+        if (!who) return;                             // 票不管用，api 里已经踢回去了
+        me = who;
+
+        $("#loginView").classList.add("hide");
+        $("#appView").classList.remove("hide");
+
+        // 顶栏：右边显示"姓名（用户名）+ 角色 + 退出"
+        const box = $("#who");
+        box.replaceChildren();
+        box.appendChild(el("span", me.name + "（" + me.username + "）"));
+        box.appendChild(el("span", me.role === "ADMIN" ? "管理员" : "读者",
+            "badge" + (me.role === "ADMIN" ? "" : " reader")));
+        const out = el("button", "退出登录", "btn-ghost btn-mini");
+        out.addEventListener("click", doLogout);
+        box.appendChild(out);
+
+        // 管理员才看得见的两个入口
+        const isAdmin = me.role === "ADMIN";
+        $("#tabUsers").classList.toggle("hide", !isAdmin);
+        $("#bookAdd").classList.toggle("hide", !isAdmin);
+
+        switchTab("books");
+    }
+
+    /* =========================================================
+       标签页切换
+       ========================================================= */
+    document.querySelectorAll(".tab").forEach((t) => {
+        t.addEventListener("click", () => switchTab(t.dataset.tab));
+    });
+
+    function switchTab(name) {
+        document.querySelectorAll(".tab").forEach((t) =>
+            t.classList.toggle("active", t.dataset.tab === name));
+
+        $("#tab-books").classList.toggle("hide", name !== "books");
+        $("#tab-borrows").classList.toggle("hide", name !== "borrows");
+        $("#tab-users").classList.toggle("hide", name !== "users");
+
+        if (name === "books") refreshBooksAndMine();
+        if (name === "borrows") loadBorrows();
+        if (name === "users") loadUsers();
+    }
+
+    /* =========================================================
+       图书 + 我的借阅
+       ★ 顺序有讲究：先问"我借了哪些"，再画书单，才画得对
+       ========================================================= */
+    async function refreshBooksAndMine() {
+        await loadMyBorrows();
+        await loadBooks();
+    }
+
+    async function loadBooks() {
+        const list = await api("GET", "/api/books");
+        if (!list) return;
+        books = list;
+        renderBooks();
+    }
+
+    /** 搜索是在已经拿到的书单上筛，不再跑一趟服务器 */
+    function renderBooks() {
+        const kw = $("#search").value.trim().toLowerCase();
+        const list = kw
+            ? books.filter((b) =>
+                b.bookName.toLowerCase().includes(kw) ||
+                b.author.toLowerCase().includes(kw) ||
+                b.bookId.toLowerCase().includes(kw))
+            : books;
+
+        $("#bookCount").textContent = kw
+            ? "筛出 " + list.length + " 本 / 共 " + books.length + " 本"
+            : "共 " + list.length + " 本";
+
+        const tbody = $("#bookRows");
+        tbody.replaceChildren();                      // ★ 清空用这个，别用 innerHTML = ""
+
+        const isAdmin = me && me.role === "ADMIN";
+
+        for (const b of list) {
+            const tr = el("tr");
+            tr.appendChild(el("td", b.bookId));
+            tr.appendChild(el("td", b.bookName));
+            tr.appendChild(el("td", b.author));
+            tr.appendChild(el("td", b.total, "num"));
+            // 借光了就把数字标红
+            tr.appendChild(el("td", b.available, "num" + (b.available === 0 ? " zero" : "")));
+
+            const op = el("td", null, "op");
+
+            // 「借书」改成弹窗：先问借多少天
+            const borrowBtn = miniBtn("借书", null, () => openBorrowDialog(b));
+            borrowBtn.disabled = b.available === 0;   // 一本都不剩就点不动
+            op.appendChild(borrowBtn);
+
+            // 「还书」只有我手上正好有这本时才点得动 —— 免得点了才发现没借过
+            const returnBtn = miniBtn("还书", "ghost", () => doReturn(b.bookId));
+            returnBtn.disabled = !myOpenIds.has(b.bookId);
+            op.appendChild(returnBtn);
+
+            if (isAdmin) {
+                op.appendChild(miniBtn("编辑", "ghost", () => openBookDialog(b)));
+                op.appendChild(miniBtn("删除", "danger", () => doDeleteBook(b)));
+            }
+            tr.appendChild(op);
+            tbody.appendChild(tr);
+        }
+
+        $("#bookEmpty").classList.toggle("hide", list.length > 0);
+    }
+
+    $("#search").addEventListener("input", renderBooks);
+    $("#bookReload").addEventListener("click", refreshBooksAndMine);
+    $("#bookAdd").addEventListener("click", () => openBookDialog(null));
+
+    /* ---------- 我的借阅 ---------- */
+    async function loadMyBorrows() {
+        const list = await api("GET", "/api/borrows/mine");
+        if (!list) return;
+
+        // 只留还没还的，按"该还的先后"排 —— 快到期 / 逾期的自动跑到最上面
+        const open = list.filter((r) => !r.returnTime).sort((a, b) => dueOf(a) - dueOf(b));
+
+        myOpenIds = new Set(open.map((r) => r.bookId));
+
+        $("#myBorrowCount").textContent = open.length ? "（在借 " + open.length + " 本）" : "";
+
+        const now  = Date.now();
+        const tbody = $("#myBorrowRows");
+        tbody.replaceChildren();
+
+        for (const r of open) {
+            const due  = dueOf(r);
+            const left = Math.ceil((due - now) / DAY_MS);      // 还剩几天（负数 = 逾期）
+
+            const tr = el("tr");
+            tr.appendChild(el("td", r.bookId));
+            tr.appendChild(el("td", r.bookName));
+            tr.appendChild(el("td", fmtTime(r.borrowTime)));
+            tr.appendChild(el("td", fmtTime(due)));
+
+            const td = el("td");
+            if (left < 0) {
+                td.appendChild(el("span", "逾期 " + (-left) + " 天", "chip red"));
+            } else if (left <= 3) {
+                td.appendChild(el("span", "还剩 " + left + " 天", "chip red"));
+            } else {
+                td.appendChild(el("span", "还剩 " + left + " 天", "chip green"));
+            }
+            td.appendChild(el("span", " 共 " + daysOf(r) + " 天", "count"));
+            tr.appendChild(td);
+
+            const op = el("td", null, "op");
+            op.appendChild(miniBtn("归还", "ghost", () => doReturn(r.bookId)));
+            tr.appendChild(op);
+
+            tbody.appendChild(tr);
+        }
+
+        $("#myBorrowEmpty").classList.toggle("hide", open.length > 0);
+        $("#myBorrowTable").classList.toggle("hide", open.length === 0);
+    }
+
+    /* ---------- 借书弹窗：问借多少天 ---------- */
+    function openBorrowDialog(book) {
+        borrowBookId = book.bookId;
+        $("#borrowWho").textContent = "《" + book.bookName + "》　" + book.author
+            + "　（现在可借 " + book.available + " 册）";
+        $("#fDays").value = DEFAULT_DAYS;
+        updateBorrowDue();
+        $("#borrowDialog").showModal();
+        $("#fDays").focus();
+        $("#fDays").select();
+    }
+
+    /** 输入框里的天数：夹在 1 ~ 365 之间 */
+    function readDays() {
+        let n = parseInt($("#fDays").value, 10);
+        if (!n || n < 1) n = 1;
+        if (n > MAX_DAYS) n = MAX_DAYS;
+        return n;
+    }
+
+    /** 边输边算：告诉用户"那就是哪天还" */
+    function updateBorrowDue() {
+        const n = readDays();
+        const due = new Date(Date.now() + n * DAY_MS);
+        const p = (x) => String(x).padStart(2, "0");
+        $("#borrowDue").textContent = "借 " + n + " 天 —— 应还时间 "
+            + due.getFullYear() + "-" + p(due.getMonth() + 1) + "-" + p(due.getDate())
+            + " " + p(due.getHours()) + ":" + p(due.getMinutes());
+    }
+
+    $("#fDays").addEventListener("input", updateBorrowDue);
+
+    document.querySelectorAll(".quickdays button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            $("#fDays").value = btn.dataset.days;
+            updateBorrowDue();
+        });
+    });
+
+    $("#borrowCancel").addEventListener("click", () => $("#borrowDialog").close());
+
+    $("#borrowForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const days = readDays();
+        const r = await api("POST", "/api/borrows", { bookId: borrowBookId, days: days });
+        $("#borrowDialog").close();
+        if (!r) return;
+        toast(r.message, "ok");
+        await refreshBooksAndMine();                  // 干完活就重新要一遍，页面从不自己猜数字
+    });
+
+    /* ---------- 还书 ---------- */
+    async function doReturn(bookId) {
+        const r = await api("POST", "/api/borrows/return", { bookId: bookId });
+        if (!r) return;
+        toast(r.message, "ok");
+        await refreshBooksAndMine();
+        if (!$("#tab-borrows").classList.contains("hide")) await loadBorrows();
+    }
+
+    /* ---------- 新增 / 编辑 ---------- */
+    function openBookDialog(book) {
+        editingBookId = book ? book.bookId : null;
+        $("#bookDialogTitle").textContent = book ? "编辑图书" : "新增图书";
+        $("#bookDialogHint").textContent = book
+            ? "编号和册数不能在这里改（后端只接受书名和作者）"
+            : "编号建议按 B052、B053… 这样往下排";
+        $("#fBookId").value    = book ? book.bookId : "";
+        $("#fBookId").disabled = !!book;
+        $("#fBookName").value  = book ? book.bookName : "";
+        $("#fAuthor").value    = book ? book.author : "";
+        $("#fTotal").value     = book ? book.total : 1;
+        $("#totalRow").classList.toggle("hide", !!book);
+        $("#bookDialog").showModal();
+        $("#fBookName").focus();
+    }
+
+    $("#bookCancel").addEventListener("click", () => $("#bookDialog").close());
+
+    $("#bookForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const bookId   = $("#fBookId").value.trim();
+        const bookName = $("#fBookName").value.trim();
+        const author   = $("#fAuthor").value.trim();
+        const total    = parseInt($("#fTotal").value, 10);
+
+        if (!bookName || !author) { toast("书名和作者都要填", "bad"); return; }
+
+        let r;
+        if (editingBookId) {
+            r = await api("PUT", "/api/books/" + encodeURIComponent(editingBookId),
+                { bookName: bookName, author: author });
+        } else {
+            if (!bookId) { toast("编号要填", "bad"); return; }
+            r = await api("POST", "/api/books",
+                { bookId: bookId, bookName: bookName, author: author,
+                    total: (total > 0 ? total : 1) });
+        }
+        if (!r) return;
+
+        $("#bookDialog").close();
+        toast(r.message, "ok");
+        await loadBooks();
+    });
+
+    async function doDeleteBook(book) {
+        if (!confirm("确定删除《" + book.bookName + "》（" + book.bookId + "）？")) return;
+        const r = await api("DELETE", "/api/books/" + encodeURIComponent(book.bookId));
+        if (!r) return;
+        toast(r.message, "ok");
+        await refreshBooksAndMine();
+    }
+
+    /* =========================================================
+       借阅记录
+       ========================================================= */
+    async function loadBorrows() {
+        const list = await api("GET", "/api/borrows");
+        if (!list) return;
+
+        const isAdmin = me && me.role === "ADMIN";
+
+        // 表头按角色不同：管理员才需要看「借书人」
+        const head = $("#borrowHead");
+        head.replaceChildren();
+        for (const h of ["编号", "书名"].concat(isAdmin ? ["借书人"] : [],
+            ["借期", "借出时间", "应还时间", "状态"])) {
+            head.appendChild(el("th", h));
+        }
+        $("#borrowScope").textContent = isAdmin
+            ? "（管理员视图：所有人的记录）"
+            : "（只显示你自己的记录）";
+
+        // 新的排前面
+        const sorted = list.slice().sort((a, b) => b.borrowTime - a.borrowTime);
+        $("#borrowCount").textContent = "共 " + sorted.length + " 条";
+
+        const tbody = $("#borrowRows");
+        tbody.replaceChildren();
+
+        for (const r of sorted) {
+            const tr = el("tr");
+            tr.appendChild(el("td", r.bookId));
+            tr.appendChild(el("td", r.bookName));
+            if (isAdmin) tr.appendChild(el("td", r.borrower));
+
+            const days = daysOf(r);
+            const due  = dueOf(r);
+            tr.appendChild(el("td", days + " 天", "num"));
+            tr.appendChild(el("td", fmtTime(r.borrowTime)));
+            tr.appendChild(el("td", fmtTime(due)));
+
+            const td = el("td");
+            if (r.returnTime) {
+                td.appendChild(el("span", "已归还", "chip green"));
+                td.appendChild(el("span", " " + fmtTime(r.returnTime)));
+            } else {
+                const over = Math.floor((Date.now() - due) / DAY_MS);
+                if (over > 0) {
+                    td.appendChild(el("span", "逾期 " + over + " 天", "chip red"));
+                } else {
+                    td.appendChild(el("span", "在借", "chip"));
+                }
+            }
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+
+        $("#borrowEmpty").classList.toggle("hide", sorted.length > 0);
+    }
+
+    $("#borrowReload").addEventListener("click", loadBorrows);
+
+    /* =========================================================
+       用户管理（只有管理员进得来）
+       ========================================================= */
+    async function loadUsers() {
+        const list = await api("GET", "/api/users");
+        if (!list) return;
+
+        $("#userCount").textContent = "共 " + list.length + " 个账号";
+
+        const tbody = $("#userRows");
+        tbody.replaceChildren();
+
+        for (const u of list) {
+            const isAdmin = u.role === "ADMIN";
+            const isMe    = me && u.username === me.username;
+
+            const tr = el("tr");
+            tr.appendChild(el("td", u.username + (isMe ? "（我）" : "")));
+            tr.appendChild(el("td", u.name));
+            tr.appendChild(el("td", isAdmin ? "管理员" : "读者",
+                "chip" + (isAdmin ? "" : " gray")));
+
+            const op = el("td", null, "op");
+            const roleBtn = miniBtn(isAdmin ? "降为读者" : "升为管理员", "ghost",
+                () => doSetRole(u));
+            roleBtn.disabled = isMe;                  // 后端也不让取消自己，这里先按掉
+            op.appendChild(roleBtn);
+            op.appendChild(miniBtn("重置密码", "ghost", () => openPwdDialog(u)));
+            tr.appendChild(op);
+            tbody.appendChild(tr);
+        }
+    }
+
+    $("#userReload").addEventListener("click", loadUsers);
+
+    async function doSetRole(user) {
+        const next = user.role === "ADMIN" ? "READER" : "ADMIN";
+        const r = await api("PUT", "/api/users/" + encodeURIComponent(user.username) + "/role",
+            { role: next });
+        if (!r) return;
+        toast(r.message, "ok");
+        await loadUsers();
+    }
+
+    function openPwdDialog(user) {
+        pwdUsername = user.username;
+        $("#pwdWho").textContent = "给 " + user.username + "（" + user.name + "）设一个新密码";
+        $("#fPassword").value = "";
+        $("#pwdDialog").showModal();
+        $("#fPassword").focus();
+    }
+
+    $("#pwdCancel").addEventListener("click", () => $("#pwdDialog").close());
+
+    $("#pwdForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const r = await api("PUT", "/api/users/" + encodeURIComponent(pwdUsername) + "/password",
+            { password: $("#fPassword").value });
+        if (!r) return;
+        $("#pwdDialog").close();
+        toast(r.message, "ok");
+    });
+
+    /* =========================================================
+       开跑：有票就直接进，没票就显示登录页
+       ========================================================= */
+    (async function boot() {
+        if (token) {
+            await enterApp();
+        } else {
+            $("#loginView").classList.remove("hide");
+        }
+    })();
+</script>
+</body>
+</html>

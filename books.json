@@ -1,0 +1,359 @@
+[
+  {
+    "bookId": "B001",
+    "bookName": "Java核心技术",
+    "author": "Horstmann",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B002",
+    "bookName": "算法导论",
+    "author": "Cormen",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B003",
+    "bookName": "深入理解计算机系统",
+    "author": "Bryant",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B004",
+    "bookName": "代码大全",
+    "author": "McConnell",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B005",
+    "bookName": "重构",
+    "author": "Fowler",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B006",
+    "bookName": "设计模式",
+    "author": "Gamma",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B007",
+    "bookName": "沉默的大多数",
+    "author": "王小波",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B008",
+    "bookName": "活着",
+    "author": "余华",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B009",
+    "bookName": "百年孤独",
+    "author": "马尔克斯",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B010",
+    "bookName": "人类简史",
+    "author": "赫拉利",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B011",
+    "bookName": "C++ Primer",
+    "author": "Lippman",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B012",
+    "bookName": "Python编程：从入门到实践",
+    "author": "Eric Matthes",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B013",
+    "bookName": "数据库系统概论",
+    "author": "王珊",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B014",
+    "bookName": "计算机网络",
+    "author": "谢希仁",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B015",
+    "bookName": "操作系统概念",
+    "author": "Silberschatz",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B016",
+    "bookName": "数据结构与算法分析",
+    "author": "Mark Allen Weiss",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B017",
+    "bookName": "Redis设计与实现",
+    "author": "黄健宏",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B018",
+    "bookName": "Spring实战",
+    "author": "Craig Walls",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B019",
+    "bookName": "Linux鸟哥的私房菜",
+    "author": "鸟哥",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B020",
+    "bookName": "编译原理",
+    "author": "龙书 Aho",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B021",
+    "bookName": "三体",
+    "author": "刘慈欣",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B022",
+    "bookName": "围城",
+    "author": "钱钟书",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B023",
+    "bookName": "平凡的世界",
+    "author": "路遥",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B024",
+    "bookName": "月亮与六便士",
+    "author": "毛姆",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B025",
+    "bookName": "挪威的森林",
+    "author": "村上春树",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B026",
+    "bookName": "解忧杂货店",
+    "author": "东野圭吾",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B027",
+    "bookName": "白夜行",
+    "author": "东野圭吾",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B028",
+    "bookName": "红楼梦",
+    "author": "曹雪芹",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B029",
+    "bookName": "三国演义",
+    "author": "罗贯中",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B030",
+    "bookName": "水浒传",
+    "author": "施耐庵",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B031",
+    "bookName": "西游记",
+    "author": "吴承恩",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B032",
+    "bookName": "JavaScript高级程序设计",
+    "author": "Nicholas",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B033",
+    "bookName": "深入理解Java虚拟机",
+    "author": "周志明",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B034",
+    "bookName": "MyBatis从入门到精通",
+    "author": "刘增辉",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B035",
+    "bookName": "微服务架构设计模式",
+    "author": "Chris Richardson",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B036",
+    "bookName": "领域驱动设计",
+    "author": "Eric Evans",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B037",
+    "bookName": "Kafka权威指南",
+    "author": "Neha Narkhede",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B038",
+    "bookName": "Go语言实战",
+    "author": "William Kennedy",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B039",
+    "bookName": "Rust程序设计语言",
+    "author": "Steve Klabnik",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B040",
+    "bookName": "数据密集型应用系统设计",
+    "author": "Martin Kleppmann",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B041",
+    "bookName": "简爱",
+    "author": "夏洛蒂·勃朗特",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B042",
+    "bookName": "呼啸山庄",
+    "author": "艾米莉·勃朗特",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B043",
+    "bookName": "了不起的盖茨比",
+    "author": "菲茨杰拉德",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B044",
+    "bookName": "追风筝的人",
+    "author": "卡勒德·胡赛尼",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B045",
+    "bookName": "小王子",
+    "author": "圣埃克苏佩里",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B046",
+    "bookName": "乡土中国",
+    "author": "费孝通",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B047",
+    "bookName": "理想国",
+    "author": "柏拉图",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B048",
+    "bookName": "沉思录",
+    "author": "马可·奥勒留",
+    "total": 2,
+    "available": 2
+  },
+  {
+    "bookId": "B049",
+    "bookName": "经济学原理",
+    "author": "曼昆",
+    "total": 3,
+    "available": 3
+  },
+  {
+    "bookId": "B050",
+    "bookName": "信号与系统",
+    "author": "奥本海姆",
+    "total": 1,
+    "available": 1
+  },
+  {
+    "bookId": "B051",
+    "bookName": "Book1",
+    "author": "Auther1",
+    "total": 1,
+    "available": 1
+  }
+]

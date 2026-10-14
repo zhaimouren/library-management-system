@@ -1,0 +1,14 @@
+[
+  {
+    "username": "admin",
+    "password": "8ccb1b5197d2d40f2141cb558cffad5cd82cab2e355aea2de57b0f2c40c8b526",
+    "name": "管理员",
+    "role": "ADMIN"
+  },
+  {
+    "username": "zhang3",
+    "password": "d33b546ba713808fc6008ff5a8dff02b6eb0ae80a918143194ef600a71458b5c",
+    "name": "张三",
+    "role": "READER"
+  }
+]
