@@ -3,6 +3,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -33,35 +34,6 @@ public class LibraryService {
     private static final String SALT = "libms::";
     private final Map<String, User> sessions = new HashMap<>();
 
-    // 某个人自己的借阅记录（不看角色，就看他借的）—— 网页上「我的借阅」用这个
-    public List<BorrowRecord> recordsOf(String username) {
-        List<BorrowRecord> mine = new ArrayList<>();
-        if (username == null) {
-            return mine;                      // 没登录 -> 空列表，不抛异常
-        }
-        for (BorrowRecord r : records) {
-            if (username.equals(r.getBorrower())) {
-                mine.add(r);
-            }
-        }
-        return mine;
-    }
-
-    // 把借阅表交给外面（给接口/网页用，不拼字）
-    public List<BorrowRecord> allRecords() {
-        return records;
-    }
-
-    // 把整个书库交给外面（给接口/网页用，不拼字）
-    public List<Book> allBooks() {
-        return books;
-    }
-
-    // 把用户表交给外面（给接口/网页用，不拼字）
-    public List<User> allUsers() {
-        return users;
-    }
-
     // 将明文密码通过 SHA-256 算法加密
     private static String hash(String password) {
         try {
@@ -78,7 +50,46 @@ public class LibraryService {
         }
     }
 
-    public String addBook(User operator, Book book) {
+    // 用户名：只能英文 + 数字
+    private static boolean isUserNameOk(String username) {
+        return username.matches("[A-Za-z0-9]+");
+    }
+
+    // 姓名：只能汉字或字母
+    private static boolean isNameOk(String name) {
+        return name.matches("[\\p{IsHan}A-Za-z]+");
+    }
+
+    // 某个人自己的借阅记录（不看角色，就看他借的）—— 网页上「我的借阅」用这个
+    public synchronized List<BorrowRecord> recordsOf(String username) {
+        List<BorrowRecord> mine = new ArrayList<>();
+        if (username == null) {
+            return mine;                      // 没登录 -> 空列表，不抛异常
+        }
+        for (BorrowRecord r : records) {
+            if (username.equals(r.getBorrower())) {
+                mine.add(r);
+            }
+        }
+        return mine;
+    }
+
+    // 把借阅表交给外面（给接口/网页用，不拼字）
+    public synchronized List<BorrowRecord> allRecords() {
+        return new ArrayList<>(records);
+    }
+
+    // 把整个书库交给外面（给接口/网页用，不拼字）
+    public synchronized List<Book> allBooks() {
+        return new ArrayList<>(books);
+    }
+
+    // 把用户表交给外面（给接口/网页用，不拼字）
+    public synchronized List<User> allUsers() {
+        return new ArrayList<>(users);
+    }
+
+    public synchronized String addBook(User operator, Book book) {
         if (operator == null || !operator.isAdmin()) {
             return "只有管理员能添加书籍。";
         }
@@ -92,7 +103,7 @@ public class LibraryService {
         return "添加书籍成功！";
     }
 
-    public String deleteBook(User operator, String bookId) {
+    public synchronized String deleteBook(User operator, String bookId) {
         Book target = findBook(bookId);
         if (operator == null || !operator.isAdmin()) {
             return "只有管理员能删除书籍。";
@@ -109,7 +120,7 @@ public class LibraryService {
         return "已删除：《" + target.getBookName() + "》";
     }
 
-    public String updateBook(User operator, Book book) {
+    public synchronized String updateBook(User operator, Book book) {
         Book target = findBook(book.getBookId());
         if (operator == null || !operator.isAdmin()) {
             return "只有管理员能修改书籍。";
@@ -124,7 +135,7 @@ public class LibraryService {
     }
 
     // 查询书籍
-    public String queryBooks(String keyword) {
+    public synchronized String queryBooks(String keyword) {
         StringBuilder sb = new StringBuilder();
         int count = 0;
         for (Book book : books) {
@@ -142,7 +153,7 @@ public class LibraryService {
     }
 
     // 打印所有书籍列表
-    public void printAll() {
+    public synchronized void printAll() {
         if (books.isEmpty()) {
             System.out.println("书架是空的");
             return;
@@ -152,17 +163,24 @@ public class LibraryService {
         }
     }
 
-    // 保存书籍列表
-    public void save() {
+    // 原子写
+    private static void writeAtomic(Path target, String text, String errPrefix) {
+        Path tmp = target.resolveSibling(target.getFileName() + ".tmp");
         try {
-            Files.writeString(FILE, GSON.toJson(books), StandardCharsets.UTF_8);
+            Files.writeString(tmp, text, StandardCharsets.UTF_8);
+            Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            System.out.println("保存书籍失败: " + e.getMessage());
+            System.out.println(errPrefix + e.getMessage());
         }
     }
 
+    // 保存书籍列表
+    public synchronized void save() {
+        writeAtomic(FILE, GSON.toJson(books), "保存书籍失败: ");
+    }
+
     // 加载书籍列表
-    public void load() {
+    public synchronized void load() {
         if (!Files.exists(FILE)) {
             return;
         }
@@ -176,7 +194,7 @@ public class LibraryService {
     }
 
     // 遍历找书
-    public Book findBook(String bookId) {
+    public synchronized Book findBook(String bookId) {
         for (Book book : books) {
             if (bookId.equals(book.getBookId())) {
                 return book;
@@ -186,16 +204,12 @@ public class LibraryService {
     }
 
     // 保存借阅记录
-    public void saveBorrows() {
-        try {
-            Files.writeString(RECORD_FILE, GSON.toJson(records), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            System.out.println("保存借阅记录失败: " + e.getMessage());
-        }
+    public synchronized void saveBorrows() {
+        writeAtomic(RECORD_FILE, GSON.toJson(records), "保存借阅记录失败: ");
     }
 
     // 加载借阅记录
-    public void loadBorrows() {
+    public synchronized void loadBorrows() {
         if (!Files.exists(RECORD_FILE)) {
             return;
         }
@@ -209,12 +223,12 @@ public class LibraryService {
     }
 
     // 借书（不指定天数 —— 老调用走这条路，按默认 30 天）
-    public String borrowBook(User operator, String bookId) {
+    public synchronized String borrowBook(User operator, String bookId) {
         return borrowBook(operator, bookId, BORROW_DAYS);      // ← 就一行，转发
     }
 
     // 借书
-    public String borrowBook(User operator, String bookId, int days) {
+    public synchronized String borrowBook(User operator, String bookId, int days) {
         if (operator == null) { return "请先登录。"; }
         Book target = findBook(bookId);
         if (target == null) { return "没有这本书: " + bookId; }
@@ -238,7 +252,7 @@ public class LibraryService {
     }
 
     // 还书
-    public String returnBook(User operator, String bookId){
+    public synchronized String returnBook(User operator, String bookId){
         if (operator == null) {
             return "请先登录。";
         }
@@ -268,7 +282,7 @@ public class LibraryService {
     }
 
     // 打印借阅记录
-    public void printRecords() {
+    public synchronized void printRecords() {
         if (records.isEmpty()) {
             System.out.println("还没有任何借阅记录");
             return;
@@ -295,15 +309,11 @@ public class LibraryService {
     }
 
     // 保存用户
-    public void saveUsers() {
-        try {
-            Files.writeString(USER_FILE, GSON.toJson(users), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            System.out.println("保存用户失败: " + e.getMessage());
-        }
+    public synchronized void saveUsers() {
+        writeAtomic(USER_FILE, GSON.toJson(users), "保存用户失败: ");
     }
 
-    public void loadUsers() {
+    public synchronized void loadUsers() {
         if (!Files.exists(USER_FILE)) {
             return;
         }
@@ -317,7 +327,7 @@ public class LibraryService {
     }
 
     // 创建默认管理员
-    public void initDefaultAdmin() {
+    public synchronized void initDefaultAdmin() {
         if (!users.isEmpty()) {
             return;
         }
@@ -327,7 +337,7 @@ public class LibraryService {
     }
 
     // 遍历寻找用户
-    public User findUser(String username) {
+    public synchronized User findUser(String username) {
         for (User user : users) {
             if (username.equals(user.getUsername())) {
                 return user;
@@ -337,7 +347,7 @@ public class LibraryService {
     }
 
     // 登录成功返回这个用户，失败返回 null
-    public String login(String username, String password) {
+    public synchronized String login(String username, String password) {
         User user = findUser(username);
         if (user == null || !user.getPassword().equals(hash(password))) {
             return null;
@@ -348,7 +358,7 @@ public class LibraryService {
     }
 
     // 通过toke获取用户信息
-    public User getUserByToken(String token) {
+    public synchronized User getUserByToken(String token) {
         if (token == null) {
             return null;
         }
@@ -356,22 +366,12 @@ public class LibraryService {
     }
 
     // 退出登录：token作废
-    public void logout(String token) {
+    public synchronized void logout(String token) {
         sessions.remove(token);
     }
 
-    // 用户名：只能英文 + 数字
-    private static boolean isUserNameOk(String username) {
-        return username.matches("[A-Za-z0-9]+");
-    }
-
-    // 姓名：只能汉字或字母
-    private static boolean isNameOk(String name) {
-        return name.matches("[\\p{IsHan}A-Za-z]+");
-    }
-
     // 注册：新来的人一律是读者
-    public String register(String username, String password, String name) {
+    public synchronized String register(String username, String password, String name) {
         if (!isUserNameOk(username)) {
             return "用户名只能由英文字母和数字组成。";
         }
@@ -390,7 +390,7 @@ public class LibraryService {
     }
 
     // 列出所有用户
-    public String listUsers(User operator) {
+    public synchronized String listUsers(User operator) {
         if (operator == null || !operator.isAdmin()) {
             return "只有管理员能查看用户列表。";
         }
@@ -405,7 +405,7 @@ public class LibraryService {
     }
 
     // 设为管理员 / 取消管理员（换成 User.ROLE_ADMIN 或 User.ROLE_READER）
-    public String setRole(User operator, String username, String role) {
+    public synchronized String setRole(User operator, String username, String role) {
         if (operator == null || !operator.isAdmin()) {
             return "只有管理员能修改用户角色。";
         }
@@ -431,7 +431,7 @@ public class LibraryService {
     }
 
     // 重置密码
-    public String resetPassword(User operator, String username, String newPassword) {
+    public synchronized String resetPassword(User operator, String username, String newPassword) {
         if (operator == null || !operator.isAdmin()) {
             return "只有管理员能重置密码。";
         }
@@ -448,7 +448,7 @@ public class LibraryService {
     }
 
     // 初始化数据库
-    public void seedIfEmpty() {
+    public synchronized void seedIfEmpty() {
         if (!books.isEmpty()) {
             return;
         }

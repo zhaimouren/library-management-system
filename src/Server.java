@@ -65,6 +65,12 @@ public class Server {
         lib.initDefaultAdmin();
 
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        // ★★ 并发（第 11 步）：给 HttpServer 配一个固定大小的线程池。
+        //    不写这一行时，JDK 只用【一个】线程（名字叫 HTTP-Dispatcher）串行处理所有请求 ——
+        //    实测 4 个各睡 500ms 的请求总共花了 2120ms，一个慢请求会把后面所有人挡住。
+        //    加上之后才是真正的并发服务器；代价是共享状态会同时被多个线程碰到，
+        //    所以必须配合 LibraryService 里那些 synchronized 一起用。
+        server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(16));
 
         server.createContext("/", safe(exchange -> {
             String path = exchange.getRequestURI().getPath();
