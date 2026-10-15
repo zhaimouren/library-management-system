@@ -9,7 +9,7 @@
 > 「面向对象程序设计」课程设计 · 第 8 组
 
 - 后端不依赖任何 Web 框架，使用 JDK 自带的 `com.sun.net.httpserver.HttpServer`
-- 前端不用任何框架和构建工具，`web/index.html` 一个文件即完整单页应用
+- 前端不用任何框架和构建工具，`web/index.old.html` 一个文件即完整单页应用
 - 数据用 JSON 文件持久化，整个项目只有 **Gson 一个外部依赖**
 - 核心目标是把「分层设计」「接口鉴权」「并发安全」「防御性编程」落到可运行的代码里
 
@@ -19,6 +19,7 @@
 
 - [功能特性](#功能特性)
 - [技术栈](#技术栈)
+- [更新](#)
 - [快速开始](#快速开始)
 - [默认账号](#默认账号)
 - [项目结构](#项目结构)
@@ -68,6 +69,27 @@
 | 持久化 | JSON 文件 | 无数据库，采用「临时文件 + 原子改名」写入 |
 | 前端 | 原生 HTML / CSS / JavaScript | `fetch` + `async/await`，无框架、无构建 |
 | 并发 | `synchronized` + 固定线程池 | 见[关键实现说明](#关键实现说明) |
+
+---
+
+## 更新
+
+### index.html
+- 更新了新的前端页面
+- 旧版index.html文件 上传为index.old.html
+- 旧版页面如下：
+  - 登录界面：
+  ![ver1.login.png](web/version_1%20images/ver1.login.png)
+  - 注册界面：
+  ![ver1.register.png](web/version_1%20images/ver1.register.png)
+  - 我的借阅界面：
+  ![ver1.myrecord.png](web/version_1%20images/ver1.myrecord.png)
+  - 图书界面：
+  ![ver1.listbook.png](web/version_1%20images/ver1.listbook.png)
+  - 借阅记录界面：
+  ![ver1.borrowrecord.png](web/version_1%20images/ver1.borrowrecord.png)
+  - 用户管理界面：
+  ![ver1.usermanagement.png](web/version_1%20images/ver1.usermanagement.png)
 
 ---
 
