@@ -3,263 +3,768 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>图书管理系统</title>
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#221D18">
+    <meta name="description" content="图书管理系统：馆藏目录、借阅归还、借阅记录与用户管理。">
+    <title>图书管理系统 · 馆藏目录</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='5' fill='%23221D18'/><rect x='6.5' y='6.5' width='19' height='19' rx='2' fill='none' stroke='%23A63A2A' stroke-width='2.5'/><path d='M11 12h10M11 16h10M11 20h6' stroke='%23EFE9DC' stroke-width='2' stroke-linecap='round'/></svg>">
     <style>
-        :root{
-            --blue:#3b6ef6; --blue-d:#2f5be0; --ink:#2b3245; --muted:#7b8398;
-            --line:#eef1f6; --bg:#f4f6fb; --red:#d64545; --green:#2a9d5c; --amber:#c98a12;
+        /* =====================================================================
+           设计令牌 —— 目录卡方向
+           纸（暖米白底）+ 墨（暖近黑）+ 印（朱红，全站唯一强调色）
+           展示字用衬线（宋体族），数据用等宽，正文用中文黑体
+           ===================================================================== */
+        :root {
+            /* 纸 */
+            --paper:      #EDE7D9;
+            --paper-2:    #F3EEE2;
+            --card:       #FCFAF4;
+            /* 墨 */
+            --ink:        #221D18;
+            --ink-2:      #4A4238;
+            --muted:      #6B6154;
+            /* 发丝线 */
+            --hair:       rgba(34, 29, 24, .13);
+            --hair-2:     rgba(34, 29, 24, .30);
+            --rule:       rgba(34, 29, 24, .40);
+            /* 输入框轮廓：必须和卡片底色有 3:1（WCAG 1.4.11 非文本对比度）。
+               浅灰发丝线的 .13 只有 1.24:1，输入框会"没有边"；.50 实测 3.2:1 */
+            --field-line: rgba(34, 29, 24, .50);
+            /* 印 —— 唯一强调色 */
+            --accent:     #A63A2A;
+            --accent-d:   #8A2E20;
+            --accent-tint:#F6E4E0;
+            /* 语义状态（状态一律配文字，不靠颜色单独表意） */
+            --ok:         #2E6B4E;
+            --ok-tint:    #E2EDE4;
+            --neutral-tint:#EAE5DA;
+            /* 墨条 */
+            --bar:        #221D18;
+            --bar-text:   #EFE9DC;
+            --barh:       55px;
+            /* 字体 */
+            --font-serif: Georgia, "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", SimSun, serif;
+            --font-sans:  "Source Han Sans SC", "Noto Sans SC", "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+            --font-mono:  "Cascadia Mono", Consolas, "SF Mono", Menlo, "DejaVu Sans Mono", monospace;
+            /* 字阶 1.15 比例 */
+            --fs-xs: 12px;  --fs-sm: 13px;  --fs-base: 15px; --fs-md: 17px;
+            --fs-lg: 19px;  --fs-xl: 24px;  --fs-2xl: 32px;  --fs-3xl: 44px; --fs-4xl: 56px;
+            /* 间距梯度 */
+            --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+            --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 72px;
+            /* 圆角（方一些，贴近印刷品） */
+            --r-1: 2px; --r-2: 5px; --r-3: 9px;
+            /* 三级阴影：暖调、带环境色，不用纯黑 */
+            --sh-1: 0 1px 2px rgba(58, 45, 32, .10);
+            --sh-2: 0 10px 26px -10px rgba(58, 45, 32, .26);
+            --sh-3: 0 28px 64px -22px rgba(58, 45, 32, .34);
+            /* 动效 */
+            --ease:     cubic-bezier(.16, 1, .3, 1);
+            --ease-out: cubic-bezier(.22, .61, .36, 1);
+            --dur-1: 160ms; --dur-2: 320ms; --dur-3: 640ms;
         }
-        *{box-sizing:border-box}
-        body{margin:0;background:var(--bg);color:var(--ink);
-            font-family:"Microsoft YaHei",system-ui,-apple-system,sans-serif;font-size:14px}
-        button{font-family:inherit}
-        .hide{display:none !important}
 
-        /* ---------- 顶栏 ---------- */
-        .topbar{background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;
-            display:flex;align-items:center;justify-content:space-between;
-            position:sticky;top:0;z-index:10}
-        .brand{font-size:17px;font-weight:700;color:var(--blue)}
-        .who{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
-        .badge{background:#eef3ff;color:var(--blue);border-radius:999px;padding:2px 10px;font-size:12px}
-        .badge.reader{background:#f1f3f7;color:#7b8398}
+        /* =====================================================================
+           基础
+           ===================================================================== */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--font-sans);
+            font-size: var(--fs-base);
+            line-height: 1.75;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* 纸纹：fixed 覆盖全页，multiply 混合，透明度极低 */
+        body::after {
+            content: "";
+            position: fixed; inset: 0; z-index: 1;
+            pointer-events: none; opacity: .045; mix-blend-mode: multiply;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+        .hide { display: none !important; }
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+        }
+        .skip {
+            position: absolute; left: -9999px; top: 0; z-index: 999;
+            background: var(--ink); color: var(--bar-text);
+            padding: 10px 18px; border-radius: 0 0 var(--r-2) 0; text-decoration: none;
+        }
+        .skip:focus { left: 0; }
 
-        /* ---------- 卡片 / 布局 ---------- */
-        .card{background:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.06);padding:26px 30px}
-        .wrap{max-width:1040px;margin:22px auto 60px;padding:0 16px}
-        .center{min-height:calc(100vh - 58px);display:flex;align-items:center;justify-content:center;padding:16px}
-        .center .card{width:400px}
-        h1{font-size:19px;color:var(--blue);margin:0 0 6px;text-align:center}
-        h3{font-size:16px;margin:0 0 4px}
-        .sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+        /* 键盘焦点：统一 2px 朱红描边 + 2px 偏移 */
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        /* ---------- 表单 ---------- */
-        label{display:block;font-size:13px;color:var(--muted);margin:14px 0 5px}
-        input,select{width:100%;padding:9px 11px;font-size:14px;font-family:inherit;color:var(--ink);
-            border:1px solid #d5d9e2;border-radius:8px;outline:none;background:#fff}
-        input:focus,select:focus{border-color:var(--blue)}
-        input:disabled{background:#f6f7fa;color:#9aa2b4}
-        button{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 18px;
-            font-size:14px;cursor:pointer;transition:background .15s}
-        button:hover:enabled{background:var(--blue-d)}
-        button:disabled{background:#c8cfdb;cursor:not-allowed}
-        .btn-ghost{background:#eef1f6;color:#5a6379}
-        .btn-ghost:hover:enabled{background:#e2e7f0}
-        .btn-danger{background:var(--red)}
-        .btn-danger:hover:enabled{background:#bd3838}
-        .btn-mini{padding:5px 11px;font-size:13px;border-radius:7px}
-        .btn-full{width:100%;margin-top:20px;padding:11px;font-size:15px}
-        .linkline{text-align:center;color:var(--muted);font-size:13px;margin:16px 0 0}
-        .link{color:var(--blue);cursor:pointer;text-decoration:underline}
+        /* =====================================================================
+           请求进行中：顶部朱红扫描条
+           ===================================================================== */
+        .progress {
+            position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 130;
+            overflow: hidden; pointer-events: none; opacity: 0;
+            transition: opacity var(--dur-1) var(--ease-out);
+        }
+        body.is-busy .progress { opacity: 1; }
+        .progress::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, var(--accent) 45%, #E9705A 55%, transparent);
+            animation: sweep 1.1s ease-in-out infinite;
+        }
 
-        /* ---------- 借几天：快捷按钮 ---------- */
-        .quickdays{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
-        .quickdays button{flex:1;padding:7px 0;font-size:13px}
-        .duehint{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:#f4f7ff;
-            color:var(--blue);font-size:13px}
+        /* =====================================================================
+           顶栏 —— 墨条 + 底沿朱红细线
+           ===================================================================== */
+        .topbar {
+            height: var(--barh);
+            display: flex; align-items: center; justify-content: space-between;
+            gap: var(--s-4);
+            padding: 0 clamp(16px, 3vw, 32px);
+            background: var(--bar); color: var(--bar-text);
+            border-bottom: 3px solid var(--accent);
+            position: sticky; top: 0; z-index: 20;
+        }
+        .brand {
+            display: flex; align-items: center; gap: 10px;
+            margin: 0;
+            font-family: var(--font-serif); font-weight: 400;
+            font-size: var(--fs-lg); letter-spacing: .12em;
+            color: var(--bar-text);
+        }
+        .brand::before {
+            content: ""; flex: none;
+            width: 13px; height: 13px; border-radius: 1px;
+            background: var(--accent);
+            box-shadow: inset 0 0 0 1px rgba(252, 250, 244, .4);
+        }
+        .who {
+            display: flex; align-items: center; gap: var(--s-3);
+            min-width: 0;
+            font-size: var(--fs-sm); color: rgba(239, 233, 220, .72);
+        }
+        .who > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* 角色标记：管理员 = 朱红印；读者 = 墨线框 */
+        .rolemark {
+            flex: none; display: inline-block;
+            padding: 2px 9px 3px; border-radius: 2px;
+            font-size: var(--fs-xs); letter-spacing: .16em;
+            background: var(--accent); color: #FCFAF4;
+        }
+        .rolemark.reader {
+            background: transparent; color: rgba(239, 233, 220, .82);
+            box-shadow: inset 0 0 0 1px rgba(239, 233, 220, .34);
+        }
 
-        /* ---------- 灰条提示 ---------- */
-        .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99;
-            padding:10px 22px;border-radius:999px;font-size:14px;color:#fff;background:#5a6379;
-            box-shadow:0 6px 20px rgba(0,0,0,.18);max-width:80vw;text-align:center}
-        .toast.ok{background:var(--green)}
-        .toast.bad{background:var(--red)}
-        .toast.info{background:#48536b}
+        /* =====================================================================
+           按钮
+           ===================================================================== */
+        button {
+            font-family: inherit; font-size: var(--fs-base); line-height: 1.4;
+            color: var(--card); background: var(--ink);
+            border: 1px solid transparent; border-radius: var(--r-2);
+            padding: 9px 18px; cursor: pointer;
+            transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out),
+                        border-color var(--dur-1) var(--ease-out), box-shadow var(--dur-1) var(--ease-out),
+                        transform var(--dur-1) var(--ease-out);
+        }
+        button:hover:enabled { background: var(--accent); }
+        button:active:enabled { transform: translateY(1px); }
+        button:disabled { background: #E7E2D7; color: #7C7565; cursor: not-allowed; }
+        button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-        /* ---------- 标签页 ---------- */
-        .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-        .tab{background:#fff;color:#5a6379;border:1px solid var(--line);padding:8px 20px;
-            border-radius:999px;font-size:14px}
-        .tab:hover:enabled{background:#f7f9fd}
-        .tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-        .tab.active:hover:enabled{background:var(--blue)}
+        .btn-ghost {
+            background: transparent; color: var(--ink-2);
+            border-color: rgba(34, 29, 24, .40);
+        }
+        .btn-ghost:hover:enabled { background: rgba(34, 29, 24, .055); color: var(--ink); }
+        .topbar .btn-ghost {
+            background: transparent; color: rgba(239, 233, 220, .86);
+            box-shadow: inset 0 0 0 1px rgba(239, 233, 220, .30);
+            border-color: transparent;
+        }
+        .topbar .btn-ghost:hover:enabled { background: rgba(239, 233, 220, .13); color: #FCFAF4; }
+        .btn-danger { background: transparent; color: var(--accent-d); border-color: rgba(166, 58, 42, .36); }
+        .btn-danger:hover:enabled { background: var(--accent-tint); color: var(--accent-d); }
+        .btn-solid-danger { background: var(--accent-d); color: var(--card); }
+        .btn-solid-danger:hover:enabled { background: #6F2419; }
+        .btn-mini { padding: 5px 12px; font-size: var(--fs-sm); border-radius: var(--r-1); }
+        .btn-full { width: 100%; margin-top: var(--s-5); padding: 12px; font-size: var(--fs-md); letter-spacing: .10em; }
 
-        /* ---------- 工具行 ---------- */
-        .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-        .toolbar .grow{flex:1;min-width:160px}
-        .toolbar .grow input{margin:0}
-        .count{color:var(--muted);font-size:13px;white-space:nowrap}
+        /* =====================================================================
+           表单
+           ===================================================================== */
+        label {
+            display: block; margin: var(--s-4) 0 6px;
+            font-size: var(--fs-sm); color: var(--muted); letter-spacing: .05em;
+        }
+        input, select {
+            width: 100%; padding: 10px 12px;
+            font-family: inherit; font-size: var(--fs-base); color: var(--ink);
+            background: var(--paper-2);
+            border: 1px solid var(--field-line); border-radius: var(--r-2);
+            outline: none;
+            transition: border-color var(--dur-1) var(--ease-out),
+                        box-shadow var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+        }
+        input:hover:enabled { border-color: rgba(34, 29, 24, .72); }
+        input:focus, select:focus {
+            background: var(--card); border-color: var(--ink);
+            box-shadow: 0 0 0 3px rgba(166, 58, 42, .18);
+        }
+        input:disabled { background: #E7E2D7; color: #7C7565; cursor: not-allowed; }
+        /* 只有数字框用等宽（对齐位数）；搜索框保持正文字体，中文占位符字距才正常 */
+        input[type="number"] { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+        ::placeholder { color: var(--muted); opacity: 1; }
 
-        /* ---------- 表格 ---------- */
-        table{width:100%;border-collapse:collapse;font-size:14px}
-        th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
-        th{color:var(--muted);font-weight:400;font-size:13px;white-space:nowrap}
-        tbody tr:hover{background:#fafbfe}
-        td.op{white-space:nowrap;text-align:right}
-        td.op button+button{margin-left:6px}
-        td.op button.ghost{background:#eef1f6;color:#5a6379}
-        td.op button.ghost:hover:enabled{background:#e2e7f0}
-        td.op button.danger{background:#fdeeee;color:var(--red)}
-        td.op button.danger:hover:enabled{background:#f9dede}
-        .num{color:var(--muted)}
-        .num.zero{color:var(--red);font-weight:700}
-        .chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;
-            background:#eef3ff;color:var(--blue)}
-        .chip.gray{background:#f1f3f7;color:#7b8398}
-        .chip.red{background:#fdeeee;color:var(--red)}
-        .chip.green{background:#e9f7ef;color:var(--green)}
-        .empty{color:var(--muted);text-align:center;padding:40px 0}
+        .pwdrow { display: flex; gap: var(--s-2); }
+        .pwdrow input { flex: 1 1 auto; min-width: 0; }
+        .pwdrow button { flex: none; }
 
-        /* ---------- 我的借阅（独立标签页） ---------- */
-        #tab-mine .toolbar h3{margin:0}
-        #tab-mine .empty{padding:22px 0}
+        /* =====================================================================
+           登录 / 注册：非对称双栏（左藏书票 · 右表单）
+           ===================================================================== */
+        .gate {
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+            min-height: calc(100vh - var(--barh));
+            min-height: calc(100dvh - var(--barh));
+        }
+        .plate {
+            position: relative; overflow: hidden;
+            display: flex; align-items: center;
+            padding: clamp(32px, 5vw, 72px) clamp(28px, 5vw, 76px);
+            background-color: var(--bar); color: var(--bar-text);
+            background-image:
+                radial-gradient(54rem 34rem at 4% -24%, rgba(166, 58, 42, .34), transparent 68%),
+                radial-gradient(40rem 32rem at 112% 116%, rgba(166, 58, 42, .15), transparent 62%),
+                repeating-linear-gradient(180deg, transparent 0 31px, rgba(239, 233, 220, .06) 31px 32px);
+        }
+        /* 书脊：左沿朱红窄条 */
+        .plate::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 10px; background: var(--accent); }
+        /* ★ 这里刻意不加 position：让印章以 .plate 为定位祖先，而不是这层内容盒，
+              否则印章会以内容宽度为参照，压到标题上 */
+        .plate__inner { max-width: 30rem; }
+        .plate__eyebrow {
+            margin: 0 0 var(--s-5);
+            font-family: var(--font-mono); font-size: var(--fs-xs);
+            letter-spacing: .3em; text-transform: uppercase;
+            color: rgba(239, 233, 220, .64);
+            animation: riseIn var(--dur-3) var(--ease) 140ms both;
+        }
+        .plate__title {
+            margin: 0 0 var(--s-5);
+            font-family: var(--font-serif); font-weight: 400;
+            font-size: clamp(34px, 5.2vw, 58px);
+            line-height: 1.14; letter-spacing: .12em;
+            color: var(--bar-text);
+            animation: riseIn var(--dur-3) var(--ease) 200ms both;
+        }
+        .plate__title span { display: block; }
+        .plate__desc {
+            margin: 0;
+            max-width: 30em;              /* 中文按 em 计量（≈30 字/行），不用 ch */
+            text-wrap: pretty;            /* 避免末行只剩一两个字（渐进增强） */
+            font-size: var(--fs-base); line-height: 1.95;
+            color: rgba(239, 233, 220, .74);
+            animation: riseIn var(--dur-3) var(--ease) 280ms both;
+        }
+        /* 印章：全站记忆点 */
+        .plate__seal {
+            position: absolute; right: clamp(24px, 4vw, 56px); bottom: clamp(24px, 4vw, 56px);
+            width: 74px; height: 74px; border-radius: 3px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px;
+            font-family: var(--font-serif); font-size: 23px; line-height: 1;
+            color: #FCFAF4; background: var(--accent);
+            box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .6), inset 0 0 0 2px rgba(252, 250, 244, .34);
+            animation: sealIn var(--dur-3) var(--ease) 360ms both;
+        }
 
-        /* ---------- 弹窗 ---------- */
-        dialog{border:0;border-radius:14px;padding:26px 30px;width:400px;max-width:92vw;
-            box-shadow:0 20px 60px rgba(0,0,0,.22);color:var(--ink)}
-        dialog::backdrop{background:rgba(30,38,58,.45)}
-        dialog menu{display:flex;justify-content:flex-end;gap:10px;margin:24px 0 0;padding:0}
+        .gate__form {
+            display: flex; align-items: center; justify-content: center;
+            padding: clamp(28px, 5vw, 64px) clamp(18px, 4vw, 48px);
+            /* 与左侧同一个 32px 横格节奏，两半读起来是同一张纸 */
+            background-image: repeating-linear-gradient(180deg, transparent 0 31px, rgba(34, 29, 24, .035) 31px 32px);
+        }
+        .formcard {
+            position: relative; width: 100%; max-width: 400px;
+            padding: clamp(24px, 4vw, 38px);
+            background: var(--card);
+            border: 1px solid var(--hair-2); border-top: 3px solid var(--accent);
+            border-radius: var(--r-3);
+            box-shadow: var(--sh-2);
+            animation: riseIn var(--dur-3) var(--ease) 80ms both;
+        }
+        /* 四角括号：印刷装订记号 */
+        .corners {
+            position: absolute; inset: 11px; pointer-events: none; opacity: .42;
+            background-image:
+                linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+                linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+                linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent)),
+                linear-gradient(var(--accent), var(--accent)), linear-gradient(var(--accent), var(--accent));
+            background-size: 13px 1px, 1px 13px, 13px 1px, 1px 13px, 13px 1px, 1px 13px, 13px 1px, 1px 13px;
+            background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+            background-repeat: no-repeat;
+        }
+        .pane { animation: riseIn var(--dur-2) var(--ease) both; }
+        .form-title {
+            margin: 0 0 var(--s-2);
+            font-family: var(--font-serif); font-weight: 400;
+            font-size: var(--fs-xl); letter-spacing: .14em;
+            color: var(--ink);
+        }
+        .sub { margin: 0 0 var(--s-4); color: var(--muted); font-size: var(--fs-sm); line-height: 1.8; }
+        .linkline { margin: var(--s-4) 0 0; text-align: center; font-size: var(--fs-sm); color: var(--muted); }
+        .link {
+            padding: 2px 2px;
+            font: inherit; color: var(--accent-d); background: none; border: 0;
+            border-bottom: 1px solid rgba(138, 46, 32, .45);
+            border-radius: 0; cursor: pointer;
+        }
+        .link:hover:enabled { background: none; color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* =====================================================================
+           主界面：抽屉 —— 索引标签 + 面板
+           ===================================================================== */
+        .wrap { max-width: 1080px; margin: clamp(20px, 3vw, 40px) auto var(--s-8); padding: 0 clamp(14px, 3vw, 24px); }
+
+        .tabs {
+            display: flex; flex-wrap: wrap; gap: 2px;
+            padding: 0 6px;
+            border-bottom: 1px solid var(--hair-2);
+        }
+        .tab {
+            flex: none; margin-bottom: -1px;
+            padding: 9px 20px 10px;
+            background: transparent; color: var(--muted);
+            border: 1px solid transparent; border-bottom: 0;
+            border-radius: var(--r-2) var(--r-2) 0 0;
+            font-size: var(--fs-base); letter-spacing: .07em;
+        }
+        .tab:hover:enabled { background: rgba(34, 29, 24, .05); color: var(--ink); }
+        .tab.active, .tab.active:hover:enabled {
+            background: var(--card); border-color: var(--hair-2); color: var(--ink);
+            box-shadow: inset 0 3px 0 var(--accent);
+        }
+        .panel {
+            padding: clamp(18px, 3vw, 30px);
+            background: var(--card);
+            border: 1px solid var(--hair-2); border-top: 0;
+            border-radius: 0 0 var(--r-3) var(--r-3);
+            box-shadow: var(--sh-1);
+            animation: riseIn var(--dur-2) var(--ease) both;
+        }
+        .toolbar {
+            display: flex; align-items: center; flex-wrap: wrap;
+            gap: var(--s-2) var(--s-3);
+            margin-bottom: var(--s-3);
+        }
+        .toolbar .grow { flex: 1 1 200px; min-width: 0; }
+        .toolbar .grow input { margin: 0; }
+        .spacer { flex: 1 1 auto; }
+        .panel-title {
+            margin: 0;
+            font-family: var(--font-serif); font-weight: 400;
+            font-size: var(--fs-lg); letter-spacing: .1em; color: var(--ink);
+        }
+        /* 计数一律走正文字体：否则放在宋体标题里会继承衬线字形和 1.9px 字距，
+           同一个「共 N 本」在不同标签页会长得不一样 */
+        .count {
+            font-family: var(--font-sans);
+            font-size: var(--fs-sm); letter-spacing: 0;
+            font-variant-numeric: tabular-nums;
+            color: var(--muted); white-space: nowrap;
+        }
+
+        /* =====================================================================
+           表格：报表式 —— 双线表头、等宽数字、右对齐数值
+           ===================================================================== */
+        .tbl-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
+        thead th {
+            padding: 0 10px 9px;
+            font-size: var(--fs-sm); font-weight: 400; color: var(--muted);
+            letter-spacing: .08em; text-align: left; white-space: nowrap;
+            border-bottom: 3px double var(--rule);
+        }
+        tbody td {
+            padding: 11px 10px;
+            color: var(--ink); vertical-align: middle;
+            border-bottom: 1px solid var(--hair);
+        }
+        tbody tr { transition: background var(--dur-1) var(--ease-out); }
+        tbody tr:hover { background: rgba(34, 29, 24, .033); }
+        tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+        th.right, td.right { text-align: right; }
+        td.mono, th.mono {
+            font-family: var(--font-mono); font-size: 13.5px;
+            font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+            white-space: nowrap;
+        }
+        td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+        td.num.zero { color: var(--accent); font-weight: 600; }
+        td.op { text-align: right; white-space: nowrap; }
+        td.op button + button { margin-left: 6px; }
+
+        .chip {
+            display: inline-block; padding: 2px 9px 3px; border-radius: var(--r-1);
+            font-size: var(--fs-xs); letter-spacing: .05em; white-space: nowrap;
+            background: var(--neutral-tint); color: var(--ink-2);
+        }
+        .chip.red { background: var(--accent-tint); color: var(--accent-d); }
+        .chip.green { background: var(--ok-tint); color: var(--ok); }
+        .chip.gray { background: var(--neutral-tint); color: var(--ink-2); }
+        tbody td .chip + .count { margin-left: var(--s-2); }
+
+        /* 空态：带目录卡插画 */
+        .empty {
+            margin: 0; color: var(--muted); text-align: center;
+            padding: 104px var(--s-4) var(--s-6);
+            font-size: var(--fs-base); line-height: 1.9;
+            background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='104' height='72' viewBox='0 0 104 72' fill='none'><rect x='1.5' y='1.5' width='101' height='69' rx='3' stroke='%23221D18' stroke-opacity='.30'/><path d='M14 20h54M14 33h76M14 46h76M14 59h38' stroke='%23221D18' stroke-opacity='.15' stroke-width='2' stroke-linecap='round'/><rect x='76' y='12' width='16' height='16' rx='2' fill='%23A63A2A' fill-opacity='.6'/></svg>");
+            background-repeat: no-repeat; background-position: center 14px; background-size: 104px 72px;
+        }
+        #tab-mine .empty { padding: 92px var(--s-4) var(--s-5); }
+
+        /* =====================================================================
+           弹窗
+           ===================================================================== */
+        dialog {
+            width: min(444px, 92vw);
+            max-height: calc(100dvh - 32px);
+            overflow: auto;
+            padding: clamp(22px, 3vw, 32px);
+            background: var(--card); color: var(--ink);
+            border: 1px solid var(--hair-2); border-top: 3px solid var(--accent);
+            border-radius: var(--r-3);
+            box-shadow: var(--sh-3);
+        }
+        dialog[open] { animation: riseIn var(--dur-2) var(--ease) both; }
+        dialog::backdrop { background: rgba(34, 29, 24, .46); backdrop-filter: blur(3px); }
+        dialog .dlg-title {
+            margin: 0 0 6px;
+            font-family: var(--font-serif); font-weight: 400;
+            font-size: var(--fs-xl); letter-spacing: .12em;
+        }
+        dialog menu {
+            display: flex; justify-content: flex-end; gap: var(--s-2);
+            margin: var(--s-5) 0 0; padding: 0;
+        }
+        .quickdays { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s-2); }
+        .quickdays button {
+            flex: 1 1 auto; min-width: 58px; padding: 7px 10px;
+            font-size: var(--fs-sm); font-variant-numeric: tabular-nums;
+            background: var(--paper-2); color: var(--ink-2);
+            border: 1px solid var(--hair); border-radius: var(--r-1);
+        }
+        .quickdays button:hover:enabled { background: var(--card); color: var(--ink); border-color: var(--hair-2); }
+        .quickdays button.is-on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+        .duehint {
+            margin: var(--s-4) 0 0; padding: 10px 14px;
+            background: var(--accent-tint); color: var(--accent-d);
+            border-left: 3px solid var(--accent); border-radius: 0 var(--r-1) var(--r-1) 0;
+            font-size: var(--fs-sm); line-height: 1.7;
+        }
+
+        /* =====================================================================
+           提示条
+           ===================================================================== */
+        .toast {
+            position: fixed; top: calc(var(--barh) + 12px); left: 50%;
+            transform: translateX(-50%);
+            z-index: 120;
+            display: flex; align-items: center; gap: var(--s-3);
+            max-width: min(560px, 92vw);
+            padding: 11px 12px 11px 16px;
+            background: var(--card); color: var(--ink);
+            border: 1px solid var(--hair-2); border-left: 3px solid var(--ink-2);
+            border-radius: var(--r-2);
+            box-shadow: var(--sh-2);
+            font-size: var(--fs-base);
+            animation: toastIn var(--dur-2) var(--ease) both;
+        }
+        .toast.ok   { border-left-color: var(--ok); }
+        .toast.bad  { border-left-color: var(--accent); }
+        .toast.info { border-left-color: var(--ink-2); }
+        .toast__x {
+            flex: none; width: 28px; height: 28px; padding: 0;
+            display: grid; place-items: center;
+            background: transparent; color: var(--muted);
+            border: 1px solid transparent; border-radius: var(--r-1);
+            font-size: var(--fs-sm); line-height: 1;
+        }
+        .toast__x:hover:enabled { background: rgba(34, 29, 24, .07); color: var(--ink); }
+
+        /* =====================================================================
+           动效关键帧
+           ===================================================================== */
+        @keyframes riseIn  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+        @keyframes rowIn   { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+        @keyframes sealIn  { from { opacity: 0; transform: rotate(-17deg) scale(.84); } to { opacity: 1; transform: rotate(-6deg); } }
+        @keyframes toastIn { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes sweep   { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+        /* 表格行错峰入场：由 JS 写入 --i */
+        tbody tr { animation: rowIn var(--dur-2) var(--ease) both; animation-delay: calc(var(--i, 0) * 26ms); }
+
+        /* =====================================================================
+           响应式
+           ===================================================================== */
+        @media (max-width: 900px) {
+            .gate { grid-template-columns: 1fr; }
+            .plate { padding: var(--s-7) var(--s-5); display: block; }
+            .plate__inner { max-width: none; }
+            .plate__seal {
+                position: static; margin-top: var(--s-5);
+                width: 58px; height: 58px; font-size: 18px;
+            }
+        }
+        @media (max-width: 520px) {
+            .tab { padding: 8px 13px; font-size: 14px; letter-spacing: .04em; }
+            .panel { padding: var(--s-4) var(--s-3); }
+            .brand { font-size: var(--fs-md); letter-spacing: .08em; }
+            .who > span:first-child { display: none; }   /* 窄屏只留角色 + 退出 */
+        }
+
+        /* 桌面端：51 条书目一屏放不下，表头钉在顶栏下面，滚动时列名始终可见。
+           注意：sticky 在滚动容器里失效，所以宽屏下必须把 .tbl-wrap 的 overflow 关掉
+           （宽屏本来也不溢出，见浏览器实测：768 / 1440px 溢出 0px） */
+        @media (min-width: 768px) {
+            .tbl-wrap { overflow: visible; }
+            thead th {
+                position: sticky; top: var(--barh); z-index: 3;
+                background: var(--card);
+            }
+        }
+
+        /* 窄屏表格改为卡片行：表头隐藏，字段名由 data-label 生成 */
+        @media (max-width: 680px) {
+            .tbl-wrap { overflow: visible; }
+            table.stack, table.stack tbody, table.stack tr, table.stack td { display: block; width: 100%; }
+            table.stack thead { display: none; }
+            table.stack tr {
+                padding: var(--s-3) var(--s-3) var(--s-2);
+                margin-bottom: var(--s-3);
+                border: 1px solid var(--hair); border-radius: var(--r-2);
+                background: var(--paper-2);
+            }
+            table.stack tr:hover td:first-child { box-shadow: none; }
+            table.stack td {
+                display: grid; grid-template-columns: 6.5em minmax(0, 1fr);
+                gap: var(--s-3); align-items: baseline;
+                padding: 3px 0; border: 0; text-align: left !important;
+            }
+            table.stack td::before {
+                content: attr(data-label);
+                color: var(--muted); font-size: var(--fs-xs);
+                letter-spacing: .08em; font-family: var(--font-sans);
+            }
+            table.stack td.op {
+                display: flex; flex-wrap: wrap; gap: 6px;
+                padding-top: var(--s-2); text-align: left;
+            }
+            table.stack td.op::before { display: none; }
+            table.stack td.op button { flex: 1 1 auto; }
+        }
+        /* 触屏设备把点按目标抬到 44px */
+        @media (pointer: coarse) {
+            .btn-mini { min-height: 44px; padding: 10px 14px; }
+            .toast__x { width: 40px; height: 40px; }
+        }
+
+        /* =====================================================================
+           降级：关闭全部动效
+           ===================================================================== */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .001ms !important;
+                animation-delay: 0ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .001ms !important;
+                transition-delay: 0ms !important;
+                scroll-behavior: auto !important;
+            }
+            body.is-busy .progress::after { animation: none; transform: none; }
+        }
     </style>
 </head>
 <body>
 
+<a class="skip" href="#main">跳到主内容</a>
+<div class="progress" aria-hidden="true"></div>
+
 <!-- ==================== 顶栏 ==================== -->
 <header class="topbar">
-    <div class="brand">📚 图书管理系统</div>
+    <h1 class="brand">图书管理系统</h1>
     <div class="who" id="who"></div>
 </header>
 
 <!-- ==================== 提示条 ==================== -->
-<div id="toast" class="toast hide"></div>
+<div id="toast" class="toast hide" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button type="button" class="toast__x" id="toastX" aria-label="关闭提示">✕</button>
+</div>
 
 <!-- ==================== 登录 / 注册 ==================== -->
-<main id="loginView" class="center">
-    <div class="card">
-
-        <!-- 登录 -->
-        <div id="loginPane">
-            <h1>登录</h1>
-
-            <form id="loginForm">
-                <label for="username">用户名</label>
-                <input id="username" value="admin" autocomplete="username">
-                <label for="password">密码</label>
-                <input id="password" type="password" autocomplete="current-password">
-                <button type="submit" class="btn-full">登录</button>
-            </form>
-            <p class="linkline">还没有账号？<span class="link" id="toRegister">去注册</span></p>
+<main id="loginView" class="gate">
+    <div class="plate">
+        <div class="plate__inner">
+            <p class="plate__eyebrow">馆藏目录 · Catalogue</p>
+            <h2 class="plate__title"><span>图书</span><span>管理系统</span></h2>
+            <p class="plate__desc">Designed by Zhaimouren</p>
+            <div class="plate__seal" aria-hidden="true"><span>藏</span><span>书</span></div>
         </div>
+    </div>
 
-        <!-- 注册 -->
-        <div id="registerPane" class="hide">
-            <h1>注册</h1>
-            <p class="sub">注册默认为读者，如有问题可联系管理员</p>
-            <form id="registerForm">
-                <label for="rUsername">用户名（只能用英文字母和数字）</label>
-                <input id="rUsername" autocomplete="username">
-                <label for="rName">姓名（汉字或英文字母）</label>
-                <input id="rName">
-                <label for="rPassword">密码（至少 6 位）</label>
-                <input id="rPassword" type="password" autocomplete="new-password">
-                <button type="submit" class="btn-full">注册</button>
-            </form>
-            <p class="linkline">已经有账号了？<span class="link" id="toLogin">去登录</span></p>
+    <div class="gate__form">
+        <div class="formcard">
+            <span class="corners" aria-hidden="true"></span>
+
+            <!-- 登录 -->
+            <div id="loginPane" class="pane">
+                <h2 class="form-title">登录</h2>
+
+                <form id="loginForm">
+                    <label for="username">用户名</label>
+                    <input id="username" autocomplete="username" autocapitalize="off" spellcheck="false">
+                    <label for="password">密码</label>
+                    <input id="password" type="password" autocomplete="current-password">
+                    <button type="submit" class="btn-full">登录</button>
+                </form>
+                <p class="linkline">还没有账号？<button type="button" class="link" id="toRegister">去注册</button></p>
+            </div>
+
+            <!-- 注册 -->
+            <div id="registerPane" class="hide">
+                <h2 class="form-title">注册</h2>
+                <p class="sub">注册默认为读者，如有问题可联系管理员</p>
+                <form id="registerForm">
+                    <label for="rUsername">用户名（只能用英文字母和数字）</label>
+                    <input id="rUsername" autocomplete="username" autocapitalize="off" spellcheck="false">
+                    <label for="rName">姓名（汉字或英文字母）</label>
+                    <input id="rName">
+                    <label for="rPassword">密码（至少 6 位）</label>
+                    <input id="rPassword" type="password" autocomplete="new-password">
+                    <button type="submit" class="btn-full">注册</button>
+                </form>
+                <p class="linkline">已经有账号了？<button type="button" class="link" id="toLogin">去登录</button></p>
+            </div>
         </div>
-
     </div>
 </main>
 
 <!-- ==================== 主界面 ==================== -->
 <main id="appView" class="wrap hide">
 
-    <nav class="tabs">
-        <button class="tab active" data-tab="mine">我的借阅</button>
-        <button class="tab" data-tab="books">图书</button>
-        <button class="tab" data-tab="borrows">借阅记录</button>
-        <button class="tab hide" data-tab="users" id="tabUsers">用户管理</button>
+    <nav class="tabs" role="tablist" aria-label="功能分区">
+        <button class="tab active" role="tab" data-tab="mine"    aria-selected="true"  aria-controls="tab-mine">我的借阅</button>
+        <button class="tab"        role="tab" data-tab="books"   aria-selected="false" aria-controls="tab-books">图书</button>
+        <button class="tab"        role="tab" data-tab="borrows" aria-selected="false" aria-controls="tab-borrows">借阅记录</button>
+        <button class="tab hide"   role="tab" data-tab="users"   aria-selected="false" aria-controls="tab-users" id="tabUsers">用户管理</button>
     </nav>
 
-    <!-- ---------- 我的借阅（独立标签页） ---------- -->
-    <section id="tab-mine" class="card">
+    <!-- ---------- 我的借阅 ---------- -->
+    <section id="tab-mine" class="panel" role="tabpanel" aria-labelledby="tab-mine">
         <div class="toolbar">
-            <h3>我的借阅 <span class="count" id="myBorrowCount"></span></h3>
-            <div style="flex:1"></div>
+            <h2 class="panel-title">我的借阅 <span class="count" id="myBorrowCount"></span></h2>
+            <span class="spacer"></span>
             <button class="btn-ghost btn-mini" id="myBorrowReload">刷新</button>
         </div>
-        <p class="sub">这里只列【还没还】的书，按该还的先后排。可以直接在这里归还。</p>
-        <table id="myBorrowTable" class="hide">
-            <thead>
-            <tr>
-                <th>编号</th><th>书名</th><th>借出时间</th><th>应还时间</th>
-                <th>剩多久</th><th style="text-align:right">操作</th>
-            </tr>
-            </thead>
-            <tbody id="myBorrowRows"></tbody>
-        </table>
-        <p class="empty hide" id="myBorrowEmpty">你现在没有借书</p>
+        <div class="tbl-wrap">
+            <table id="myBorrowTable" class="stack hide" aria-label="我的在借图书">
+                <thead>
+                <tr>
+                    <th scope="col">编号</th><th scope="col">书名</th>
+                    <th scope="col">借出时间</th><th scope="col">应还时间</th>
+                    <th scope="col">剩多久</th><th scope="col" class="right">操作</th>
+                </tr>
+                </thead>
+                <tbody id="myBorrowRows"></tbody>
+            </table>
+        </div>
+        <p class="empty hide" id="myBorrowEmpty">你现在没有借书<br>去「图书」里挑一本吧</p>
     </section>
 
     <!-- ---------- 图书 ---------- -->
-    <section id="tab-books" class="card hide">
-        <!-- ---------- 图书列表 ---------- -->
+    <section id="tab-books" class="panel hide" role="tabpanel" aria-labelledby="tab-books">
         <div class="toolbar">
-            <div class="grow"><input id="search" placeholder="搜书名 / 作者 / 编号…"></div>
+            <div class="grow"><input id="search" type="search" aria-label="搜索图书" placeholder="搜书名 / 作者 / 编号…"></div>
             <span class="count" id="bookCount"></span>
             <button class="btn-ghost btn-mini" id="bookReload">刷新</button>
             <button class="btn-mini hide" id="bookAdd">＋ 新增图书</button>
         </div>
-        <table>
-            <thead>
-            <tr>
-                <th>编号</th><th>书名</th><th>作者</th>
-                <th>总数</th><th>可借</th><th style="text-align:right">操作</th>
-            </tr>
-            </thead>
-            <tbody id="bookRows"></tbody>
-        </table>
+        <div class="tbl-wrap">
+            <table class="stack" aria-label="图书列表">
+                <thead>
+                <tr>
+                    <th scope="col">编号</th><th scope="col">书名</th><th scope="col">作者</th>
+                    <th scope="col" class="num">总数</th><th scope="col" class="num">可借</th>
+                    <th scope="col" class="right">操作</th>
+                </tr>
+                </thead>
+                <tbody id="bookRows"></tbody>
+            </table>
+        </div>
         <p class="empty hide" id="bookEmpty">没有符合条件的书</p>
     </section>
 
     <!-- ---------- 借阅记录 ---------- -->
-    <section id="tab-borrows" class="card hide">
+    <section id="tab-borrows" class="panel hide" role="tabpanel" aria-labelledby="tab-borrows">
         <div class="toolbar">
             <span class="count" id="borrowCount"></span>
             <span class="count" id="borrowScope"></span>
-            <div style="flex:1"></div>
+            <span class="spacer"></span>
             <button class="btn-ghost btn-mini" id="borrowReload">刷新</button>
         </div>
-        <table>
-            <thead>
-            <tr id="borrowHead"></tr>
-            </thead>
-            <tbody id="borrowRows"></tbody>
-        </table>
+        <div class="tbl-wrap">
+            <table class="stack" aria-label="借阅记录">
+                <thead>
+                <tr id="borrowHead"></tr>
+                </thead>
+                <tbody id="borrowRows"></tbody>
+            </table>
+        </div>
         <p class="empty hide" id="borrowEmpty">还没有任何借阅记录</p>
     </section>
 
     <!-- ---------- 用户管理 ---------- -->
-    <section id="tab-users" class="card hide">
+    <section id="tab-users" class="panel hide" role="tabpanel" aria-labelledby="tab-users">
         <div class="toolbar">
             <span class="count" id="userCount"></span>
-            <div style="flex:1"></div>
+            <span class="spacer"></span>
             <button class="btn-ghost btn-mini" id="userReload">刷新</button>
         </div>
-        <table>
-            <thead>
-            <tr>
-                <th>用户名</th><th>姓名</th><th>角色</th>
-                <th style="text-align:right">操作</th>
-            </tr>
-            </thead>
-            <tbody id="userRows"></tbody>
-        </table>
+        <div class="tbl-wrap">
+            <table class="stack" aria-label="用户列表">
+                <thead>
+                <tr>
+                    <th scope="col">用户名</th><th scope="col">姓名</th><th scope="col">角色</th>
+                    <th scope="col" class="right">操作</th>
+                </tr>
+                </thead>
+                <tbody id="userRows"></tbody>
+            </table>
+        </div>
     </section>
 
 </main>
 
-<!-- ==================== 弹窗：借书（选借多少天） ==================== -->
-<dialog id="borrowDialog">
+<!-- ==================== 弹窗：借书 ==================== -->
+<dialog id="borrowDialog" aria-labelledby="borrowTitle">
     <form id="borrowForm">
-        <h3>借书</h3>
+        <h2 class="dlg-title" id="borrowTitle">借书</h2>
         <p class="sub" id="borrowWho"></p>
         <label for="fDays">借多少天</label>
         <input id="fDays" type="number" min="1" max="365" step="1" value="30">
         <div class="quickdays">
-            <button type="button" class="btn-ghost btn-mini" data-days="7">7 天</button>
-            <button type="button" class="btn-ghost btn-mini" data-days="15">15 天</button>
-            <button type="button" class="btn-ghost btn-mini" data-days="30">30 天</button>
-            <button type="button" class="btn-ghost btn-mini" data-days="60">60 天</button>
-            <button type="button" class="btn-ghost btn-mini" data-days="90">90 天</button>
+            <button type="button" class="btn-mini" data-days="7">7 天</button>
+            <button type="button" class="btn-mini" data-days="15">15 天</button>
+            <button type="button" class="btn-mini" data-days="30">30 天</button>
+            <button type="button" class="btn-mini" data-days="60">60 天</button>
+            <button type="button" class="btn-mini" data-days="90">90 天</button>
         </div>
         <p class="duehint" id="borrowDue"></p>
         <menu>
@@ -270,12 +775,12 @@
 </dialog>
 
 <!-- ==================== 弹窗：图书 ==================== -->
-<dialog id="bookDialog">
+<dialog id="bookDialog" aria-labelledby="bookDialogTitle">
     <form id="bookForm">
-        <h3 id="bookDialogTitle">新增图书</h3>
+        <h2 class="dlg-title" id="bookDialogTitle">新增图书</h2>
         <p class="sub" id="bookDialogHint"></p>
         <label for="fBookId">编号（如 B052）</label>
-        <input id="fBookId">
+        <input id="fBookId" autocapitalize="characters" spellcheck="false">
         <label for="fBookName">书名</label>
         <input id="fBookName">
         <label for="fAuthor">作者</label>
@@ -292,17 +797,30 @@
 </dialog>
 
 <!-- ==================== 弹窗：重置密码 ==================== -->
-<dialog id="pwdDialog">
+<dialog id="pwdDialog" aria-labelledby="pwdTitle">
     <form id="pwdForm">
-        <h3>重置密码</h3>
+        <h2 class="dlg-title" id="pwdTitle">重置密码</h2>
         <p class="sub" id="pwdWho"></p>
         <label for="fPassword">新密码（至少 6 位）</label>
-        <input id="fPassword" type="text">
+        <div class="pwdrow">
+            <input id="fPassword" type="password" autocomplete="new-password">
+            <button type="button" class="btn-ghost btn-mini" id="pwdShow" aria-pressed="false">显示</button>
+        </div>
         <menu>
             <button type="button" class="btn-ghost" id="pwdCancel">取消</button>
             <button type="submit">确定</button>
         </menu>
     </form>
+</dialog>
+
+<!-- ==================== 弹窗：危险操作确认（替代原生 confirm） ==================== -->
+<dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <h2 class="dlg-title" id="confirmTitle">确认操作</h2>
+    <p class="sub" id="confirmDesc"></p>
+    <menu>
+        <button type="button" class="btn-ghost" id="confirmCancel">取消</button>
+        <button type="button" class="btn-solid-danger" id="confirmOk">确定</button>
+    </menu>
 </dialog>
 
 <script>
@@ -325,7 +843,8 @@
     /* =========================================================
        小工具
        ========================================================= */
-    const $ = (sel) => document.querySelector(sel);
+    const $  = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
     /** 造一个元素。★ 一律走 textContent —— 服务器给的数据绝不进 innerHTML */
     function el(tag, text, cls) {
@@ -333,6 +852,18 @@
         if (text !== undefined && text !== null) node.textContent = text;
         if (cls) node.className = cls;
         return node;
+    }
+
+    /** 造一个带 data-label 的单元格：窄屏改成卡片行时，它就是字段名 */
+    function cell(label, text, cls) {
+        const td = el("td", text, cls);
+        td.dataset.label = label;
+        return td;
+    }
+
+    /** 行入场错峰：把序号写进 --i，上限 12 以免长表格等太久 */
+    function stagger(tr, i) {
+        tr.style.setProperty("--i", Math.min(i, 12));
     }
 
     /** 造一个小按钮 */
@@ -346,11 +877,17 @@
     /** 顶部那条提示。kind: ok / bad / info */
     function toast(text, kind) {
         const t = $("#toast");
-        t.textContent = text;
-        t.className = "toast " + (kind || "info");
+        $("#toastMsg").textContent = text;
+        t.className = "toast " + (kind || "info");     // 顺带把 hide 摘掉
         clearTimeout(toast.timer);
-        toast.timer = setTimeout(() => t.classList.add("hide"), 4000);
+        toast.timer = setTimeout(hideToast, 4000);
     }
+
+    function hideToast() {
+        $("#toast").classList.add("hide");
+    }
+
+    $("#toastX").addEventListener("click", hideToast);
 
     /** 毫秒 -> 2026-03-14 09:05；0 表示"还没有" */
     function fmtTime(ms) {
@@ -374,40 +911,82 @@
     /* =========================================================
        唯一的请求出口
        成功 -> 返回数据；失败 -> 已经弹过提示，返回 null
+       进出各记一次数，有请求在路上就点亮顶部扫描条
        ========================================================= */
+    let inflight = 0;
+
+    function busy(delta) {
+        inflight += delta;
+        document.body.classList.toggle("is-busy", inflight > 0);
+    }
+
     async function api(method, url, body) {
-        const opt = { method: method, headers: {} };
-        if (token) opt.headers["Authorization"] = "Bearer " + token;
-        if (body !== undefined) {
-            opt.headers["Content-Type"] = "application/json";
-            opt.body = JSON.stringify(body);
-        }
-
-        let resp;
+        busy(1);
         try {
-            resp = await fetch(url, opt);
-        } catch (e) {
-            toast("连不上服务器（服务器还开着吗？）", "bad");
-            return null;
-        }
+            const opt = { method: method, headers: {} };
+            if (token) opt.headers["Authorization"] = "Bearer " + token;
+            if (body !== undefined) {
+                opt.headers["Content-Type"] = "application/json";
+                opt.body = JSON.stringify(body);
+            }
 
-        // 401 = 票过期了 / 服务器重启过了 —— 直接踢回登录页
-        if (resp.status === 401) {
-            backToLogin();
-            toast("登录已过期，请重新登录", "bad");
-            return null;
-        }
+            let resp;
+            try {
+                resp = await fetch(url, opt);
+            } catch (e) {
+                toast("连不上服务器（服务器还开着吗？）", "bad");
+                return null;
+            }
 
-        // 先把正文读成文本，再自己解析：这样 500 之类的非 JSON 也不会炸
-        const text = await resp.text();
-        let data = null;
-        if (text) { try { data = JSON.parse(text); } catch (e) { data = null; } }
+            // 401 = 票过期了 / 服务器重启过了 —— 直接踢回登录页
+            if (resp.status === 401) {
+                backToLogin();
+                toast("登录已过期，请重新登录", "bad");
+                return null;
+            }
 
-        if (!resp.ok) {
-            toast((data && data.message) || ("HTTP " + resp.status), "bad");
-            return null;
+            // 先把正文读成文本，再自己解析：这样 500 之类的非 JSON 也不会炸
+            const text = await resp.text();
+            let data = null;
+            if (text) { try { data = JSON.parse(text); } catch (e) { data = null; } }
+
+            if (!resp.ok) {
+                toast((data && data.message) || ("HTTP " + resp.status), "bad");
+                return null;
+            }
+            return data;
+        } finally {
+            busy(-1);
         }
-        return data;
+    }
+
+    /* =========================================================
+       通用确认框：await askConfirm(...) -> true / false
+       替代原生 confirm()，样式与全站一致
+       ========================================================= */
+    function askConfirm(title, desc, okLabel) {
+        return new Promise((resolve) => {
+            const dlg = $("#confirmDialog");
+            $("#confirmTitle").textContent = title;
+            $("#confirmDesc").textContent = desc;
+            $("#confirmOk").textContent = okLabel || "确定";
+
+            function done(result) {
+                $("#confirmOk").removeEventListener("click", onOk);
+                $("#confirmCancel").removeEventListener("click", onCancel);
+                dlg.removeEventListener("cancel", onCancel);
+                dlg.close();
+                resolve(result);
+            }
+            function onOk()     { done(true); }
+            function onCancel() { done(false); }
+
+            $("#confirmOk").addEventListener("click", onOk);
+            $("#confirmCancel").addEventListener("click", onCancel);
+            dlg.addEventListener("cancel", onCancel);   // 按 Esc 也算取消
+            dlg.showModal();
+            $("#confirmCancel").focus();
+        });
     }
 
     /* =========================================================
@@ -488,7 +1067,7 @@
         box.replaceChildren();
         box.appendChild(el("span", me.name + "（" + me.username + "）"));
         box.appendChild(el("span", me.role === "ADMIN" ? "管理员" : "读者",
-            "badge" + (me.role === "ADMIN" ? "" : " reader")));
+            "rolemark" + (me.role === "ADMIN" ? "" : " reader")));
         const out = el("button", "退出登录", "btn-ghost btn-mini");
         out.addEventListener("click", doLogout);
         box.appendChild(out);
@@ -504,13 +1083,35 @@
     /* =========================================================
        标签页切换
        ========================================================= */
-    document.querySelectorAll(".tab").forEach((t) => {
+    const allTabs  = $$(".tab");
+    const openTabs = () => allTabs.filter((t) => !t.classList.contains("hide"));
+
+    allTabs.forEach((t) => {
         t.addEventListener("click", () => switchTab(t.dataset.tab));
+        // tablist 键盘约定：左右方向键在可见标签间循环
+        t.addEventListener("keydown", (event) => {
+            const step = event.key === "ArrowRight" ? 1
+                       : event.key === "ArrowLeft"  ? -1 : 0;
+            if (step === 0) return;
+            event.preventDefault();
+            const list = openTabs();
+            const next = list[(list.indexOf(t) + step + list.length) % list.length];
+            next.focus();
+            switchTab(next.dataset.tab);
+        });
     });
 
     function switchTab(name) {
-        document.querySelectorAll(".tab").forEach((t) =>
-            t.classList.toggle("active", t.dataset.tab === name));
+        const target = $('.tab[data-tab="' + name + '"]');
+        // 无权访问的分区（读者看不到「用户管理」）直接忽略，避免误发 403 请求
+        if (!target || target.classList.contains("hide")) name = "mine";
+
+        allTabs.forEach((t) => {
+            const on = t.dataset.tab === name;
+            t.classList.toggle("active", on);
+            t.setAttribute("aria-selected", on ? "true" : "false");
+            t.tabIndex = on ? 0 : -1;
+        });
 
         $("#tab-mine").classList.toggle("hide", name !== "mine");
         $("#tab-books").classList.toggle("hide", name !== "books");
@@ -558,16 +1159,18 @@
 
         const isAdmin = me && me.role === "ADMIN";
 
-        for (const b of list) {
+        for (let i = 0; i < list.length; i++) {
+            const b = list[i];
             const tr = el("tr");
-            tr.appendChild(el("td", b.bookId));
-            tr.appendChild(el("td", b.bookName));
-            tr.appendChild(el("td", b.author));
-            tr.appendChild(el("td", b.total, "num"));
+            stagger(tr, i);
+            tr.appendChild(cell("编号", b.bookId, "mono"));
+            tr.appendChild(cell("书名", b.bookName));
+            tr.appendChild(cell("作者", b.author));
+            tr.appendChild(cell("总数", b.total, "num"));
             // 借光了就把数字标红
-            tr.appendChild(el("td", b.available, "num" + (b.available === 0 ? " zero" : "")));
+            tr.appendChild(cell("可借", b.available, "num" + (b.available === 0 ? " zero" : "")));
 
-            const op = el("td", null, "op");
+            const op = cell("操作", null, "op");
 
             // 「借书」改成弹窗：先问借多少天
             const borrowBtn = miniBtn("借书", null, () => openBorrowDialog(b));
@@ -575,13 +1178,13 @@
             op.appendChild(borrowBtn);
 
             // 「还书」只有我手上正好有这本时才点得动 —— 免得点了才发现没借过
-            const returnBtn = miniBtn("还书", "ghost", () => doReturn(b.bookId));
+            const returnBtn = miniBtn("还书", "btn-ghost", () => doReturn(b.bookId));
             returnBtn.disabled = !myOpenIds.has(b.bookId);
             op.appendChild(returnBtn);
 
             if (isAdmin) {
-                op.appendChild(miniBtn("编辑", "ghost", () => openBookDialog(b)));
-                op.appendChild(miniBtn("删除", "danger", () => doDeleteBook(b)));
+                op.appendChild(miniBtn("编辑", "btn-ghost", () => openBookDialog(b)));
+                op.appendChild(miniBtn("删除", "btn-danger", () => doDeleteBook(b)));
             }
             tr.appendChild(op);
             tbody.appendChild(tr);
@@ -608,21 +1211,23 @@
 
         $("#myBorrowCount").textContent = open.length ? "（在借 " + open.length + " 本）" : "";
 
-        const now  = Date.now();
+        const now   = Date.now();
         const tbody = $("#myBorrowRows");
         tbody.replaceChildren();
 
-        for (const r of open) {
+        for (let i = 0; i < open.length; i++) {
+            const r    = open[i];
             const due  = dueOf(r);
             const left = Math.ceil((due - now) / DAY_MS);      // 还剩几天（负数 = 逾期）
 
             const tr = el("tr");
-            tr.appendChild(el("td", r.bookId));
-            tr.appendChild(el("td", r.bookName));
-            tr.appendChild(el("td", fmtTime(r.borrowTime)));
-            tr.appendChild(el("td", fmtTime(due)));
+            stagger(tr, i);
+            tr.appendChild(cell("编号", r.bookId, "mono"));
+            tr.appendChild(cell("书名", r.bookName));
+            tr.appendChild(cell("借出时间", fmtTime(r.borrowTime), "mono"));
+            tr.appendChild(cell("应还时间", fmtTime(due), "mono"));
 
-            const td = el("td");
+            const td = cell("剩多久", null);
             if (left < 0) {
                 td.appendChild(el("span", "逾期 " + (-left) + " 天", "chip red"));
             } else if (left <= 3) {
@@ -630,11 +1235,11 @@
             } else {
                 td.appendChild(el("span", "还剩 " + left + " 天", "chip green"));
             }
-            td.appendChild(el("span", " 共 " + daysOf(r) + " 天", "count"));
+            td.appendChild(el("span", "共 " + daysOf(r) + " 天", "count"));
             tr.appendChild(td);
 
-            const op = el("td", null, "op");
-            op.appendChild(miniBtn("归还", "ghost", () => doReturn(r.bookId)));
+            const op = cell("操作", null, "op");
+            op.appendChild(miniBtn("归还", "btn-ghost", () => doReturn(r.bookId)));
             tr.appendChild(op);
 
             tbody.appendChild(tr);
@@ -664,19 +1269,23 @@
         return n;
     }
 
-    /** 边输边算：告诉用户"那就是哪天还" */
+    /** 边输边算：告诉用户"那就是哪天还"，同时点亮对应的快捷天数 */
     function updateBorrowDue() {
-        const n = readDays();
+        const n   = readDays();
         const due = new Date(Date.now() + n * DAY_MS);
-        const p = (x) => String(x).padStart(2, "0");
+        const p   = (x) => String(x).padStart(2, "0");
         $("#borrowDue").textContent = "借 " + n + " 天 —— 应还时间 "
             + due.getFullYear() + "-" + p(due.getMonth() + 1) + "-" + p(due.getDate())
             + " " + p(due.getHours()) + ":" + p(due.getMinutes());
+
+        $$(".quickdays button").forEach((btn) => {
+            btn.classList.toggle("is-on", Number(btn.dataset.days) === n);
+        });
     }
 
     $("#fDays").addEventListener("input", updateBorrowDue);
 
-    document.querySelectorAll(".quickdays button").forEach((btn) => {
+    $$(".quickdays button").forEach((btn) => {
         btn.addEventListener("click", () => {
             $("#fDays").value = btn.dataset.days;
             updateBorrowDue();
@@ -750,7 +1359,11 @@
     });
 
     async function doDeleteBook(book) {
-        if (!confirm("确定删除《" + book.bookName + "》（" + book.bookId + "）？")) return;
+        const ok = await askConfirm(
+            "删除图书",
+            "确定删除《" + book.bookName + "》（" + book.bookId + "）？此操作不可撤销。",
+            "确定删除");
+        if (!ok) return;
         const r = await api("DELETE", "/api/books/" + encodeURIComponent(book.bookId));
         if (!r) return;
         toast(r.message, "ok");
@@ -767,15 +1380,22 @@
         const isAdmin = me && me.role === "ADMIN";
 
         // 表头按角色不同：管理员才需要看「借书人」
+        const labels = ["编号", "书名"].concat(isAdmin ? ["借书人"] : [],
+            ["借期", "借出时间", "应还时间", "状态"]);
+
         const head = $("#borrowHead");
         head.replaceChildren();
-        for (const h of ["编号", "书名"].concat(isAdmin ? ["借书人"] : [],
-            ["借期", "借出时间", "应还时间", "状态"])) {
-            head.appendChild(el("th", h));
+        for (const h of labels) {
+            const th = el("th", h);
+            th.setAttribute("scope", "col");
+            head.appendChild(th);
         }
+        // 「借期」是右对齐的数值列
+        head.children[labels.indexOf("借期")].className = "num";
+
         $("#borrowScope").textContent = isAdmin
             ? "（管理员视图：所有人的记录）"
-            : "（只显示你自己的记录）";
+            : "（只显示个人的记录）";
 
         // 新的排前面
         const sorted = list.slice().sort((a, b) => b.borrowTime - a.borrowTime);
@@ -784,22 +1404,31 @@
         const tbody = $("#borrowRows");
         tbody.replaceChildren();
 
-        for (const r of sorted) {
+        for (let i = 0; i < sorted.length; i++) {
+            const r = sorted[i];
+            let ci = 0;
+            const mk = (text, cls) => {
+                const td = el("td", text, cls);
+                td.dataset.label = labels[ci++] || "";
+                return td;
+            };
+
             const tr = el("tr");
-            tr.appendChild(el("td", r.bookId));
-            tr.appendChild(el("td", r.bookName));
-            if (isAdmin) tr.appendChild(el("td", r.borrower));
+            stagger(tr, i);
+            tr.appendChild(mk(r.bookId, "mono"));
+            tr.appendChild(mk(r.bookName));
+            if (isAdmin) tr.appendChild(mk(r.borrower));
 
             const days = daysOf(r);
             const due  = dueOf(r);
-            tr.appendChild(el("td", days + " 天", "num"));
-            tr.appendChild(el("td", fmtTime(r.borrowTime)));
-            tr.appendChild(el("td", fmtTime(due)));
+            tr.appendChild(mk(days + " 天", "num"));
+            tr.appendChild(mk(fmtTime(r.borrowTime), "mono"));
+            tr.appendChild(mk(fmtTime(due), "mono"));
 
-            const td = el("td");
+            const td = mk(null);
             if (r.returnTime) {
                 td.appendChild(el("span", "已归还", "chip green"));
-                td.appendChild(el("span", " " + fmtTime(r.returnTime)));
+                td.appendChild(el("span", " " + fmtTime(r.returnTime), "count"));
             } else {
                 const over = Math.floor((Date.now() - due) / DAY_MS);
                 if (over > 0) {
@@ -829,22 +1458,24 @@
         const tbody = $("#userRows");
         tbody.replaceChildren();
 
-        for (const u of list) {
+        for (let i = 0; i < list.length; i++) {
+            const u      = list[i];
             const isAdmin = u.role === "ADMIN";
             const isMe    = me && u.username === me.username;
 
             const tr = el("tr");
-            tr.appendChild(el("td", u.username + (isMe ? "（我）" : "")));
-            tr.appendChild(el("td", u.name));
-            tr.appendChild(el("td", isAdmin ? "管理员" : "读者",
+            stagger(tr, i);
+            tr.appendChild(cell("用户名", u.username + (isMe ? "（我）" : ""), "mono"));
+            tr.appendChild(cell("姓名", u.name));
+            tr.appendChild(cell("角色", isAdmin ? "管理员" : "读者",
                 "chip" + (isAdmin ? "" : " gray")));
 
-            const op = el("td", null, "op");
-            const roleBtn = miniBtn(isAdmin ? "降为读者" : "升为管理员", "ghost",
+            const op = cell("操作", null, "op");
+            const roleBtn = miniBtn(isAdmin ? "降为读者" : "升为管理员", "btn-ghost",
                 () => doSetRole(u));
             roleBtn.disabled = isMe;                  // 后端也不让取消自己，这里先按掉
             op.appendChild(roleBtn);
-            op.appendChild(miniBtn("重置密码", "ghost", () => openPwdDialog(u)));
+            op.appendChild(miniBtn("重置密码", "btn-ghost", () => openPwdDialog(u)));
             tr.appendChild(op);
             tbody.appendChild(tr);
         }
@@ -865,9 +1496,21 @@
         pwdUsername = user.username;
         $("#pwdWho").textContent = "给 " + user.username + "（" + user.name + "）设一个新密码";
         $("#fPassword").value = "";
+        setPwdVisible(false);                        // 每次打开都回到隐藏状态
         $("#pwdDialog").showModal();
         $("#fPassword").focus();
     }
+
+    /** 密码显示 / 隐藏：默认隐藏，需要核对时才明文 */
+    function setPwdVisible(show) {
+        $("#fPassword").type = show ? "text" : "password";
+        $("#pwdShow").textContent = show ? "隐藏" : "显示";
+        $("#pwdShow").setAttribute("aria-pressed", show ? "true" : "false");
+    }
+
+    $("#pwdShow").addEventListener("click", () => {
+        setPwdVisible($("#fPassword").type === "password");
+    });
 
     $("#pwdCancel").addEventListener("click", () => $("#pwdDialog").close());
 
